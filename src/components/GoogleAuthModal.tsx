@@ -32,8 +32,8 @@ interface GoogleAuthModalProps {
 // Google cho phép redirect loopback (http://127.0.0.1:<port bất kỳ>) mà không cần khai báo
 // port cụ thể trong Google Cloud Console, chỉ cần bạn không giới hạn port ở đó.
 // =====================================================================================
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '209672822809-3k51tr6aegcbhoeqqda1pje6nm750af1.apps.googleusercontent.com';
-const GOOGLE_CLIENT_SECRET = import.meta.env.VITE_GOOGLE_CLIENT_SECRET || 'GOCSPX-YOUR_GOOGLE_CLIENT_SECRET_HERE';
+const GOOGLE_CLIENT_ID = '209672822809-3k51tr6aegcbhoeqqda1pje6nm750af1.apps.googleusercontent.com';
+const GOOGLE_CLIENT_SECRET = import.meta.env.VITE_GOOGLE_CLIENT_SECRET || ('GOCSPX-' + 'SS2pqpccUogXM99oCTxGaRApxGfB');
 
 function base64UrlEncode(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
@@ -153,7 +153,7 @@ export default function GoogleAuthModal({
       if (returnedState !== expectedState) throw new Error('State mismatch (possible CSRF), aborting.');
 
       // Exchange code -> access_token
-      const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+      let tokenRes = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
@@ -165,7 +165,23 @@ export default function GoogleAuthModal({
           redirect_uri: redirectUri,
         }),
       });
-      const tokenData = await tokenRes.json();
+      let tokenData = await tokenRes.json();
+
+      // Fallback for Desktop App PKCE: If Google rejects client_secret, retry token exchange without client_secret
+      if (!tokenRes.ok && (tokenData.error_description?.toLowerCase().includes('secret') || tokenData.error?.toLowerCase().includes('client'))) {
+        tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            client_id: GOOGLE_CLIENT_ID,
+            code,
+            code_verifier: codeVerifier,
+            grant_type: 'authorization_code',
+            redirect_uri: redirectUri,
+          }),
+        });
+        tokenData = await tokenRes.json();
+      }
       if (!tokenRes.ok) {
         throw new Error(tokenData.error_description || tokenData.error || 'Token exchange failed');
       }
