@@ -46,6 +46,7 @@ import { FontSize } from '../extensions/FontSize';
 import { Indent } from '../extensions/Indent';
 import { LineHeight } from '../extensions/LineHeight';
 import { CustomImage } from '../extensions/CustomImage';
+import { SearchAndReplace } from '../extensions/SearchAndReplace';
 import { PageBreak } from '../extensions/PageBreak';
 import { ChangeCase } from '../extensions/ChangeCase';
 import { ParagraphSpacing } from '../extensions/ParagraphSpacing';
