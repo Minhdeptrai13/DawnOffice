@@ -46,7 +46,6 @@ import { FontSize } from '../extensions/FontSize';
 import { Indent } from '../extensions/Indent';
 import { LineHeight } from '../extensions/LineHeight';
 import { CustomImage } from '../extensions/CustomImage';
-import SearchAndReplace from '@sereneinserenade/tiptap-search-and-replace';
 import { PageBreak } from '../extensions/PageBreak';
 import { ChangeCase } from '../extensions/ChangeCase';
 import { ParagraphSpacing } from '../extensions/ParagraphSpacing';
