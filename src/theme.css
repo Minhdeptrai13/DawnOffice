@@ -1,0 +1,250 @@
+/* =========================================================
+   DawnOffice — Theme CSS (v2: Smooth Animations Edition)
+   ========================================================= */
+
+:root {
+  --do-color-primary:       #2563eb;
+  --do-color-primary-hover: #1d4ed8;
+  --do-color-primary-light: #eff6ff;
+  --do-color-surface:       #ffffff;
+  --do-color-surface-hover: #f0f4ff;
+  --do-color-surface-active:#dbeafe;
+  --do-color-bg:            #f8fafc;
+  --do-color-border:        #e2e8f0;
+  --do-color-border-focus:  #93c5fd;
+  --do-color-text:          #0f172a;
+  --do-color-text-muted:    #64748b;
+
+  --do-font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+
+  --do-spacing-xs: 0.25rem;
+  --do-spacing-sm: 0.5rem;
+  --do-spacing-md: 1rem;
+  --do-spacing-lg: 1.5rem;
+  --do-spacing-xl: 2rem;
+
+  --do-radius-sm: 4px;
+  --do-radius-md: 6px;
+  --do-radius-lg: 8px;
+  --do-radius-xl: 12px;
+
+  --do-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --do-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+  --do-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.05);
+
+  /* Transition speeds */
+  --t-fast:   100ms cubic-bezier(0.4, 0, 0.2, 1);
+  --t-normal: 160ms cubic-bezier(0.4, 0, 0.2, 1);
+  --t-slow:   240ms cubic-bezier(0.4, 0, 0.2, 1);
+  --t-spring: 200ms cubic-bezier(0.34, 1.56, 0.64, 1); /* slight spring */
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --do-color-primary:       #3b82f6;
+    --do-color-primary-hover: #60a5fa;
+    --do-color-primary-light: #1e3a5f;
+    --do-color-surface:       #1e2433;
+    --do-color-surface-hover: #2a3347;
+    --do-color-surface-active:#2d4070;
+    --do-color-bg:            #151b27;
+    --do-color-border:        #2d3748;
+    --do-color-border-focus:  #3b82f6;
+    --do-color-text:          #f1f5f9;
+    --do-color-text-muted:    #94a3b8;
+  }
+}
+
+/* ── Base ─────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--do-font-sans);
+  background-color: var(--do-color-bg);
+  color: var(--do-color-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Utility ──────────────────────────────────────────────── */
+.do-flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Ripple animation ─────────────────────────────────────── */
+@keyframes ripple {
+  0%   { transform: scale(0); opacity: 0.35; }
+  80%  { transform: scale(2.5); opacity: 0.1; }
+  100% { transform: scale(3); opacity: 0; }
+}
+
+/* ── do-btn (toolbar text buttons: New, Open, Save…) ─────── */
+.do-btn {
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: var(--do-radius-md);
+  border: 1px solid transparent;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: var(--do-font-sans);
+  cursor: pointer;
+  white-space: nowrap;
+  color: var(--do-color-text);
+  background-color: transparent;
+  /* Smooth all transitions */
+  transition:
+    background-color var(--t-normal),
+    border-color     var(--t-normal),
+    color            var(--t-normal),
+    box-shadow       var(--t-normal),
+    transform        var(--t-fast);
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.do-btn:hover {
+  background-color: var(--do-color-surface-hover);
+  border-color: var(--do-color-border-focus);
+}
+
+.do-btn:active {
+  transform: scale(0.96);
+  background-color: var(--do-color-surface-active);
+}
+
+/* Ripple effect on do-btn click */
+.do-btn::after {
+  content: '';
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: var(--do-color-primary);
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0);
+  left: 50%; top: 50%;
+  margin-left: -30px;
+  margin-top: -30px;
+}
+.do-btn:active::after {
+  animation: ripple 0.4s ease-out forwards;
+}
+
+/* ── do-btn-primary ───────────────────────────────────────── */
+.do-btn-primary {
+  background-color: var(--do-color-primary);
+  color: #fff;
+  border-color: var(--do-color-primary);
+}
+.do-btn-primary:hover {
+  background-color: var(--do-color-primary-hover);
+  border-color: var(--do-color-primary-hover);
+  box-shadow: 0 0 0 3px rgb(37 99 235 / 0.2);
+}
+.do-btn-primary:active { transform: scale(0.97); }
+
+/* ── do-btn-icon (toolbar icon-only buttons) ──────────────── */
+.do-btn-icon {
+  position: relative;
+  overflow: hidden;
+  padding: 5px;
+  min-width: 28px;
+  min-height: 28px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--do-radius-md);
+  color: var(--do-color-text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--do-font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  transition:
+    background-color var(--t-normal),
+    border-color     var(--t-normal),
+    color            var(--t-normal),
+    box-shadow       var(--t-normal),
+    transform        var(--t-spring);
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.do-btn-icon:hover {
+  background-color: var(--do-color-surface-hover);
+  border-color: var(--do-color-border);
+  color: var(--do-color-text);
+  transform: translateY(-1px);
+  box-shadow: var(--do-shadow-sm);
+}
+
+.do-btn-icon:active {
+  transform: scale(0.90) translateY(0);
+  background-color: var(--do-color-surface-active);
+  box-shadow: none;
+}
+
+.do-btn-icon.active {
+  background-color: var(--do-color-primary-light);
+  color: var(--do-color-primary);
+  border-color: var(--do-color-border-focus);
+}
+
+.do-btn-icon.active:hover {
+  background-color: var(--do-color-surface-active);
+}
+
+/* Ripple on icon buttons */
+.do-btn-icon::after {
+  content: '';
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--do-color-primary);
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0);
+  left: 50%; top: 50%;
+  margin-left: -20px;
+  margin-top: -20px;
+}
+.do-btn-icon:active::after {
+  animation: ripple 0.35s ease-out forwards;
+}
+
+/* ── do-select (dropdowns) ────────────────────────────────── */
+.do-select {
+  border: 1px solid var(--do-color-border);
+  border-radius: var(--do-radius-md);
+  background: var(--do-color-surface);
+  color: var(--do-color-text);
+  font-family: var(--do-font-sans);
+  font-size: 12px;
+  padding: 2px 4px;
+  cursor: pointer;
+  outline: none;
+  transition:
+    border-color var(--t-normal),
+    box-shadow   var(--t-normal),
+    background   var(--t-normal);
+}
+
+.do-select:hover {
+  border-color: var(--do-color-border-focus);
+}
+
+.do-select:focus {
+  border-color: var(--do-color-primary);
+  box-shadow: 0 0 0 3px rgb(37 99 235 / 0.15);
+}
