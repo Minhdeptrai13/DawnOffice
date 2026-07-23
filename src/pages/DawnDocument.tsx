@@ -135,8 +135,6 @@ export default function DawnDocument({ immersiveMode, onImmersiveModeChange, onF
     setToolbarVisible(!immersiveMode);
     return () => { if (hideTimer.current !== null) window.clearTimeout(hideTimer.current); };
   }, [immersiveMode]);
-  
-  const [pageLines, setPageLines] = useState<number[]>([]);
   const { recentFiles, addRecentFile, clearRecentFiles } = useRecentFiles();
 
   const actionsRef = useRef({
@@ -667,23 +665,8 @@ export default function DawnDocument({ immersiveMode, onImmersiveModeChange, onF
     paperH = temp;
   }
 
-  // Page break detection
+  // Page height reference for orientation
   const PAGE_HEIGHT_PX = orientation === 'landscape' ? 793 : 1122;
-  const updatePageLines = useCallback(() => {
-    const el = editorContainerRef.current?.querySelector('.ProseMirror') as HTMLElement | null;
-    if (!el) return;
-    const totalHeight = el.scrollHeight;
-    const count = Math.floor(totalHeight / PAGE_HEIGHT_PX);
-    const lines: number[] = [];
-    for (let i = 1; i <= count; i++) lines.push(i * PAGE_HEIGHT_PX);
-    setPageLines(lines);
-  }, [PAGE_HEIGHT_PX]);
-
-  useEffect(() => {
-    updatePageLines();
-    const timer = setInterval(updatePageLines, 1000);
-    return () => clearInterval(timer);
-  }, [updatePageLines]);
 
   useEffect(() => {
     const style = document.createElement('style');
@@ -734,30 +717,6 @@ export default function DawnDocument({ immersiveMode, onImmersiveModeChange, onF
         font-style: italic;
       }
       .ProseMirror table td, .ProseMirror table th { border: 1px solid ${borderColor}; }
-      .dawn-page-line {
-        position: absolute;
-        left: -1rem;
-        right: -1rem;
-        height: 0;
-        border-bottom: 1px dashed var(--do-color-border);
-        opacity: 0.5;
-        display: flex;
-        align-items: center;
-        justify-content: flex-end;
-        pointer-events: none;
-        z-index: 1;
-      }
-      .dawn-page-line-label {
-        font-size: 9px;
-        color: var(--do-color-text-muted);
-        background-color: var(--do-color-bg);
-        padding: 1px 6px;
-        border-radius: 4px;
-        border: 1px solid var(--do-color-border);
-        transform: translateY(-50%);
-        margin-right: -12px;
-        user-select: none;
-      }
       .format-painter-cursor * { cursor: crosshair !important; }
 
       /* Floating Pill Card for Text Selection Bubble Menu */
@@ -1095,11 +1054,6 @@ export default function DawnDocument({ immersiveMode, onImmersiveModeChange, onF
                 onFooterChange={setFooterText}
               />
               <EditorContent editor={editor} />
-              {pageLines.map((topPx, i) => (
-                <div key={i} className="dawn-page-line" style={{ top: topPx }}>
-                  <span className="dawn-page-line-label">{isVi ? `Trang ${i + 2}` : `Page ${i + 2}`}</span>
-                </div>
-              ))}
             </div>
 
             {/* Search & Replace Floating Card */}
