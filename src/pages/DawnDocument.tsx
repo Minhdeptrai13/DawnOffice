@@ -239,17 +239,26 @@ export default function DawnDocument({ immersiveMode, onImmersiveModeChange, onF
     if (!editor || !filePath) return;
     try {
       let content = '';
-      if (filePath.endsWith('.docx')) {
+      const lowerPath = filePath.toLowerCase();
+
+      if (lowerPath.endsWith('.docx') || lowerPath.endsWith('.doc')) {
         const uint8Array = await readFile(filePath);
         content = await convertDocxToHtml(uint8Array.buffer);
-      } else if (filePath.endsWith('.md')) {
+      } else if (lowerPath.endsWith('.md')) {
         const text = await readTextFile(filePath);
         content = await marked.parse(text);
-      } else if (filePath.endsWith('.txt')) {
+      } else if (lowerPath.endsWith('.txt')) {
         const text = await readTextFile(filePath);
         content = text.split('\n').map(line => `<p>${line}</p>`).join('');
       } else {
-        content = await readTextFile(filePath);
+        // Fallback for files without extension or binary docx
+        try {
+          const uint8Array = await readFile(filePath);
+          content = await convertDocxToHtml(uint8Array.buffer);
+        } catch (e) {
+          const text = await readTextFile(filePath);
+          content = text.split('\n').map(line => `<p>${line}</p>`).join('');
+        }
       }
       editor.commands.setContent(content);
       setCurrentFilePath(filePath);
