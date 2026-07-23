@@ -40,12 +40,19 @@ function App() {
         if (openedFile && openedFile.trim()) {
           const cleanPath = openedFile.trim();
           localStorage.setItem('dawn-last-opened-doc-path', cleanPath);
+
+          // Force set target file into initial tab in workspace
+          const fileName = cleanPath.split('\\').pop()?.split('/').pop() || 'Opened Document';
+          const cliTab = { id: 'tab-cli-opened', filePath: cleanPath, title: fileName };
+          localStorage.setItem('dawn_workspace_tabs', JSON.stringify([cliTab]));
+          localStorage.setItem('dawn_workspace_active_tab', cliTab.id);
+          localStorage.removeItem(`dawn_doc_draft_${cliTab.id}`);
+
           setActiveModule('document');
           setTimeout(() => {
             window.dispatchEvent(new CustomEvent('dawn-open-file-path', { detail: { filePath: cleanPath } }));
-          }, 200);
+          }, 300);
         } else {
-          // If a last opened document path exists, open directly into document mode bypassing welcome screen
           const lastOpened = localStorage.getItem('dawn-last-opened-doc-path');
           if (lastOpened && lastOpened.trim()) {
             setActiveModule('document');

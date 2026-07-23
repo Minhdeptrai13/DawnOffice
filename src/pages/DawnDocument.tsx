@@ -272,18 +272,13 @@ export default function DawnDocument({ immersiveMode, onImmersiveModeChange, onF
   useEffect(() => {
     if (editor && !isLoadedRef.current) {
       isLoadedRef.current = true;
-      const savedDraft = localStorage.getItem(draftKey);
       const targetPath = pendingFilePathRef.current || initialFilePath;
+      const savedDraft = localStorage.getItem(draftKey);
 
-      if (savedDraft && savedDraft.trim() && savedDraft !== '<p></p>') {
-        editor.commands.setContent(savedDraft);
-        if (targetPath) {
-          setCurrentFilePath(targetPath);
-          const fileName = targetPath.split('\\').pop()?.split('/').pop() || 'Untitled Document';
-          onFileInfoChange?.(targetPath, fileName);
-        }
-      } else if (targetPath && targetPath.trim()) {
+      if (targetPath && targetPath.trim()) {
         loadFilePathIntoEditor(targetPath.trim());
+      } else if (savedDraft && savedDraft.trim() && savedDraft !== '<p></p>') {
+        editor.commands.setContent(savedDraft);
       }
     }
   }, [editor, draftKey, initialFilePath, loadFilePathIntoEditor, onFileInfoChange]);
