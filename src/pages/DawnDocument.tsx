@@ -271,7 +271,13 @@ export default function DawnDocument({ immersiveMode, onImmersiveModeChange, onF
     if (editor && !isLoadedRef.current) {
       isLoadedRef.current = true;
       const targetPath = pendingFilePathRef.current || initialFilePath;
-      const savedDraft = localStorage.getItem(draftKey);
+      let savedDraft = localStorage.getItem(draftKey);
+
+      // Clean up legacy page-line elements if present in draft HTML
+      if (savedDraft && savedDraft.includes('dawn-page-line')) {
+        savedDraft = savedDraft.replace(/<div[^>]*class="dawn-page-line"[^>]*>.*?<\/div>/gi, '');
+        localStorage.setItem(draftKey, savedDraft);
+      }
 
       if (targetPath && targetPath.trim()) {
         loadFilePathIntoEditor(targetPath.trim());

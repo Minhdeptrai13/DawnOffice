@@ -35,6 +35,14 @@ function App() {
 
   // Auto-open file on launch if opened via Windows file association / double-click
   useEffect(() => {
+    // Clear legacy cached drafts that contained old page overlay divs
+    try {
+      const savedTabs = localStorage.getItem('dawn_workspace_tabs');
+      if (savedTabs && savedTabs.includes('dawn-page-line')) {
+        localStorage.removeItem('dawn_workspace_tabs');
+      }
+    } catch (e) {}
+
     invoke<string | null>('get_cli_opened_file')
       .then(openedFile => {
         if (openedFile && openedFile.trim()) {
@@ -43,10 +51,9 @@ function App() {
 
           // Force set target file into initial tab in workspace
           const fileName = cleanPath.split('\\').pop()?.split('/').pop() || 'Opened Document';
-          const cliTab = { id: 'tab-cli-opened', filePath: cleanPath, title: fileName };
+          const cliTab = { id: 'tab-' + Date.now(), filePath: cleanPath, title: fileName };
           localStorage.setItem('dawn_workspace_tabs', JSON.stringify([cliTab]));
           localStorage.setItem('dawn_workspace_active_tab', cliTab.id);
-          localStorage.removeItem(`dawn_doc_draft_${cliTab.id}`);
 
           setActiveModule('document');
           setTimeout(() => {
