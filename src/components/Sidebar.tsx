@@ -1,5 +1,5 @@
-import { Home, FileText, Grid, Presentation, Settings } from 'lucide-react';
 import DawnLogoAnimated from './DawnLogoAnimated';
+import { DawnHomeLogo, DawnWordLogo, DawnExcelLogo, DawnPowerPointLogo, DawnSettingsLogo } from './CustomBrandIcons';
 
 export type ModuleType = 'welcome' | 'document' | 'spreadsheet' | 'presentation' | 'settings';
 
@@ -26,17 +26,18 @@ export default function Sidebar({
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      width: '44px',
-      height: '44px',
-      borderRadius: '12px',
-      color: isActive ? '#ffffff' : 'var(--do-color-text)',
-      backgroundColor: isActive ? 'var(--do-color-primary)' : 'transparent',
+      width: '46px',
+      height: '46px',
+      borderRadius: '14px',
+      backgroundColor: isActive ? 'rgba(37,99,235,0.15)' : 'transparent',
+      border: isActive ? '1.5px solid var(--do-color-primary)' : '1.5px solid transparent',
       cursor: 'pointer',
       pointerEvents: 'auto' as const,
-      transition: 'all 0.18s cubic-bezier(0.34, 1.56, 0.64, 1)',
-      boxShadow: isActive ? '0 4px 14px rgba(37, 99, 235, 0.4)' : 'none',
-      border: 'none',
+      transition: 'all 0.22s cubic-bezier(0.34, 1.56, 0.64, 1)',
+      transform: isActive ? 'scale(1.08)' : 'scale(1)',
+      boxShadow: isActive ? '0 4px 16px rgba(37, 99, 235, 0.35)' : 'none',
       outline: 'none',
+      padding: 0,
     };
   };
 
@@ -64,14 +65,14 @@ export default function Sidebar({
       </div>
 
       {/* Nav links (0: Welcome, 1: DawnDocument, 2: DawnSheets, 3: DawnSlides, 4: DawnSettings) */}
-      <nav className="sidebar-nav" style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center' }}>
+      <nav className="sidebar-nav" style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center' }}>
         {/* 0. Welcome Launch Hub */}
         <button
           onClick={() => onSelectModule('welcome')}
           style={getLinkStyle('welcome')}
           title="Trang chủ (Welcome Launch Hub)"
         >
-          <Home size={20} />
+          <DawnHomeLogo size={32} />
         </button>
 
         {/* 1. DawnDocument */}
@@ -80,7 +81,7 @@ export default function Sidebar({
           style={getLinkStyle('document')}
           title="1. DawnDocument (Soạn thảo văn bản Word)"
         >
-          <FileText size={20} />
+          <DawnWordLogo size={32} />
         </button>
 
         {/* 2. DawnSheets */}
@@ -89,7 +90,7 @@ export default function Sidebar({
           style={getLinkStyle('spreadsheet')}
           title="2. DawnSheets (Bảng tính Excel)"
         >
-          <Grid size={20} />
+          <DawnExcelLogo size={32} />
         </button>
 
         {/* 3. DawnSlides */}
@@ -98,7 +99,7 @@ export default function Sidebar({
           style={getLinkStyle('presentation')}
           title="3. DawnSlides (Trình chiếu PowerPoint)"
         >
-          <Presentation size={20} />
+          <DawnPowerPointLogo size={32} />
         </button>
       </nav>
 
@@ -111,7 +112,7 @@ export default function Sidebar({
         style={getLinkStyle('settings')}
         title="4. DawnSettings (Cài đặt hệ thống)"
       >
-        <Settings size={20} />
+        <DawnSettingsLogo size={32} />
       </button>
     </div>
   );

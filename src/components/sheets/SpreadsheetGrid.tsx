@@ -105,7 +105,13 @@ export default function SpreadsheetGrid({
   // Global Keyboard Navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (editingAddr) return; // Typing inside inline editor
+      const activeEl = document.activeElement;
+      const isInputFocused = activeEl && (
+        activeEl.tagName === 'INPUT' ||
+        activeEl.tagName === 'TEXTAREA' ||
+        activeEl.getAttribute('contenteditable') === 'true'
+      );
+      if (isInputFocused || editingAddr) return; // Typing/highlighting inside an input box or cell editor
 
       const active = parseCellAddress(activeCellAddr);
       if (!active) return;

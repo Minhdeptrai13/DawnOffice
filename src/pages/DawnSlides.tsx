@@ -1,4 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { open as openFileDialog, save as saveDialog } from '@tauri-apps/plugin-dialog';
+import { writeTextFile, readTextFile } from '@tauri-apps/plugin-fs';
 import { Presentation, Slide, SlideElement, SlideLayout, TransitionType, AnimationType, SlideAnimation } from '../types/slides';
 import SlidesRibbon from '../components/slides/SlidesRibbon';
 import SlideThumbnails from '../components/slides/SlideThumbnails';
@@ -20,6 +22,8 @@ interface DawnSlidesProps {
 }
 
 export default function DawnSlides({ immersiveMode = false, onImmersiveModeChange, lang = 'vi' }: DawnSlidesProps) {
+  const isVi = lang === 'vi';
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isPresenting, setIsPresenting] = useState(false);
   const [presentFromBeginning, setPresentFromBeginning] = useState(true);
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
@@ -31,71 +35,433 @@ export default function DawnSlides({ immersiveMode = false, onImmersiveModeChang
   const [isChartModalOpen, setIsChartModalOpen] = useState(false);
   const [zoom, setZoom] = useState(100);
 
-  // Initial Presentation State
-  const [presentation, setPresentation] = useState<Presentation>(() => ({
-    id: 'pres-1',
-    title: lang === 'vi' ? 'Bài trình chiếu chưa đặt tên' : 'Untitled Presentation',
-    aspectRatio: '16:9',
-    theme: 'modern',
-    activeSlideId: 'slide-1',
-    animations: [],
-    slides: [
-      {
-        id: 'slide-1',
-        title: lang === 'vi' ? 'Chào mừng đến với DawnSlides' : 'Welcome to DawnSlides',
-        layout: 'title',
-        backgroundFill: '#ffffff',
-        transition: 'fade',
-        transitionDurationMs: 500,
-        speakerNotes: 'Ghi chú cho slide đầu tiên...',
-        elements: [
+  // Initial Presentation State with localStorage Persistence
+  const [presentation, setPresentation] = useState<Presentation>(() => {
+    try {
+      const saved = localStorage.getItem('dawn_slides_presentation_draft');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.slides) return parsed;
+      }
+    } catch (e) {
+      console.error('Failed to restore saved presentation:', e);
+    }
+    return {
+      id: 'pres-1',
+      title: lang === 'vi' ? 'Bài trình chiếu chưa đặt tên' : 'Untitled Presentation',
+      aspectRatio: '16:9',
+      theme: 'modern',
+      activeSlideId: 'slide-1',
+      animations: [],
+      slides: [
+        {
+          id: 'slide-1',
+          title: lang === 'vi' ? 'Chào mừng đến với DawnSlides' : 'Welcome to DawnSlides',
+          layout: 'title',
+          backgroundFill: '#ffffff',
+          transition: 'fade',
+          transitionDurationMs: 500,
+          speakerNotes: 'Ghi chú cho slide đầu tiên...',
+          elements: [
+            {
+              id: 'title-elem',
+              type: 'text',
+              content: lang === 'vi' ? 'DawnSlides — Trình Chiếu Đỉnh Cao' : 'DawnSlides — Premium Presentation',
+              x: 260,
+              y: 260,
+              width: 1400,
+              height: 140,
+              rotation: 0,
+              zIndex: 1,
+              fontSize: 56,
+              bold: true,
+              textAlign: 'center',
+              textColor: '#1e293b',
+            },
+            {
+              id: 'subtitle-elem',
+              type: 'text',
+              content: lang === 'vi' ? 'Được thiết kế cho DawnOffice • Trải nghiệm mượt mà 60fps' : 'Designed for DawnOffice • Smooth 60fps experience',
+              x: 360,
+              y: 440,
+              width: 1200,
+              height: 100,
+              rotation: 0,
+              zIndex: 2,
+              fontSize: 28,
+              textAlign: 'center',
+              textColor: '#64748b',
+            },
+          ],
+        },
+        {
+          id: 'slide-2',
+          title: lang === 'vi' ? 'Tính Năng Nổi Bật DawnOffice' : 'DawnOffice Key Features',
+          layout: 'title-content',
+          backgroundFill: '#f8fafc',
+          transition: 'slide-left',
+          transitionDurationMs: 500,
+          speakerNotes: 'Giới thiệu các tính năng độc quyền...',
+          elements: [
+            {
+              id: 's2-title',
+              type: 'text',
+              content: lang === 'vi' ? '🚀 Hệ Sinh Thái Văn Phòng Đột Phá' : '🚀 Next-Gen Office Ecosystem',
+              x: 150,
+              y: 100,
+              width: 1600,
+              height: 100,
+              rotation: 0,
+              zIndex: 1,
+              fontSize: 48,
+              bold: true,
+              textAlign: 'left',
+              textColor: '#0f172a',
+            },
+            {
+              id: 's2-col1',
+              type: 'text',
+              content: lang === 'vi' 
+                ? '• DawnDoc (Word): Soạn thảo văn bản thông minh, xuất PDF chuẩn\n• DawnSheets (Excel): Xử lý dữ liệu hàng nghìn dòng 60fps\n• DawnSlides (PowerPoint): Trình chiếu slide 4K mượt mà\n• DawnAI Copilot: Trợ lý trí tuệ nhân tạo chuyên nghiệp'
+                : '• DawnDoc (Word): Smart document writing & PDF export\n• DawnSheets (Excel): Fast spreadsheet grid with 60fps\n• DawnSlides (PowerPoint): 4K smooth slide presentation\n• DawnAI Copilot: Professional AI Assistant',
+              x: 150,
+              y: 240,
+              width: 1600,
+              height: 600,
+              rotation: 0,
+              zIndex: 2,
+              fontSize: 32,
+              textAlign: 'left',
+              textColor: '#334155',
+            },
+          ],
+        },
+        {
+          id: 'slide-3',
+          title: lang === 'vi' ? 'Phân Tích & Báo Cáo Tăng Trưởng' : 'Growth Analysis & Report',
+          layout: 'two-column',
+          backgroundFill: '#ffffff',
+          transition: 'zoom-in',
+          transitionDurationMs: 500,
+          speakerNotes: 'Phân tích số liệu tài chính...',
+          elements: [
+            {
+              id: 's3-title',
+              type: 'text',
+              content: lang === 'vi' ? '📊 Tăng Trưởng Hiệu Suất Năng Suất' : '📊 Productivity Growth Analysis',
+              x: 150,
+              y: 100,
+              width: 1600,
+              height: 100,
+              rotation: 0,
+              zIndex: 1,
+              fontSize: 48,
+              bold: true,
+              textAlign: 'left',
+              textColor: '#1e3a8a',
+            },
+            {
+              id: 's3-chart',
+              type: 'chart',
+              chartData: {
+                type: 'bar',
+                title: lang === 'vi' ? 'Tốc độ hoàn thành công việc' : 'Task Completion Speed',
+                labels: ['Q1', 'Q2', 'Q3', 'Q4'],
+                datasets: [
+                  { label: 'Trước khi dùng DawnOffice', data: [40, 45, 50, 52], backgroundColor: '#94a3b8' },
+                  { label: 'Sau khi dùng DawnOffice', data: [75, 88, 95, 99], backgroundColor: '#2563eb' }
+                ]
+              },
+              x: 150,
+              y: 240,
+              width: 1600,
+              height: 600,
+              rotation: 0,
+              zIndex: 2,
+            }
+          ],
+        },
+        {
+          id: 'slide-4',
+          title: lang === 'vi' ? 'Lời Cảm Ơn & Kết Luận' : 'Thank You & Conclusion',
+          layout: 'blank',
+          backgroundFill: '#0f172a',
+          transition: 'fade',
+          transitionDurationMs: 600,
+          speakerNotes: 'Tổng kết và cảm ơn khán giả',
+          elements: [
+            {
+              id: 's4-thanks',
+              type: 'text',
+              content: lang === 'vi' ? 'Xin Cảm Ơn Qúy Khách Hàng!' : 'Thank You For Watching!',
+              x: 200,
+              y: 360,
+              width: 1520,
+              height: 140,
+              rotation: 0,
+              zIndex: 1,
+              fontSize: 64,
+              bold: true,
+              textAlign: 'center',
+              textColor: '#f43f5e',
+            },
+            {
+              id: 's4-sub',
+              type: 'text',
+              content: lang === 'vi' ? 'DawnOffice — Sức Mạnh Cho Công Việc Của Bạn' : 'DawnOffice — Powering Your Business Growth',
+              x: 200,
+              y: 520,
+              width: 1520,
+              height: 80,
+              rotation: 0,
+              zIndex: 2,
+              fontSize: 30,
+              textAlign: 'center',
+              textColor: '#94a3b8',
+            }
+          ],
+        }
+      ],
+    };
+  });
+
+  // Sync presentation draft to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('dawn_slides_presentation_draft', JSON.stringify(presentation));
+    } catch (e) {
+      console.error('Failed to save slides draft:', e);
+    }
+  }, [presentation]);
+
+  // File Operations for Presentation
+  const handleNewPresentation = () => {
+    if (window.confirm(isVi ? 'Tạo bài trình chiếu mới? Nội dung hiện tại sẽ được đặt lại.' : 'Create new presentation? Current presentation will be reset.')) {
+      setPresentation({
+        id: `pres-${Date.now()}`,
+        title: isVi ? 'Bài trình chiếu chưa đặt tên' : 'Untitled Presentation',
+        aspectRatio: '16:9',
+        theme: 'modern',
+        activeSlideId: 'slide-1',
+        animations: [],
+        slides: [
           {
-            id: 'title-elem',
-            type: 'text',
-            content: lang === 'vi' ? 'DawnSlides — Trình Chiếu Đỉnh Cao' : 'DawnSlides — Premium Presentation',
-            x: 260,
-            y: 260,
-            width: 1400,
-            height: 140,
-            rotation: 0,
-            zIndex: 1,
-            fontSize: 56,
-            bold: true,
-            textAlign: 'center',
-            textColor: '#1e293b',
-          },
-          {
-            id: 'subtitle-elem',
-            type: 'text',
-            content: lang === 'vi' ? 'Được thiết kế cho DawnOffice • Trải nghiệm mượt mà 60fps' : 'Designed for DawnOffice • Smooth 60fps experience',
-            x: 360,
-            y: 440,
-            width: 1200,
-            height: 100,
-            rotation: 0,
-            zIndex: 2,
-            fontSize: 28,
-            textAlign: 'center',
-            textColor: '#64748b',
+            id: 'slide-1',
+            title: isVi ? 'Slide Mới' : 'New Slide',
+            layout: 'title',
+            backgroundFill: '#ffffff',
+            transition: 'none',
+            transitionDurationMs: 300,
+            speakerNotes: '',
+            elements: [
+              {
+                id: `title-${Date.now()}`,
+                type: 'text',
+                content: isVi ? 'Tiêu đề Slide Mới' : 'New Presentation Title',
+                x: 260,
+                y: 260,
+                width: 1400,
+                height: 140,
+                rotation: 0,
+                zIndex: 1,
+                fontSize: 56,
+                bold: true,
+                textAlign: 'center',
+                textColor: '#1e293b',
+              },
+            ],
           },
         ],
-      },
-    ],
-  }));
+      });
+      setSelectedElementId(null);
+    }
+  };
+
+  const parseAndLoadPresentation = (text: string, title?: string) => {
+    try {
+      const parsed = JSON.parse(text);
+      if (parsed && parsed.slides) {
+        if (title) parsed.title = title;
+        setPresentation(parsed);
+      }
+    } catch (e) {
+      console.error('Error parsing presentation file:', e);
+    }
+  };
+
+  const handleOpenPresentation = async () => {
+    try {
+      const selected = await openFileDialog({
+        multiple: false,
+        filters: [{ name: 'DawnSlides Presentation', extensions: ['json'] }],
+      });
+      if (selected && typeof selected === 'string') {
+        const text = await readTextFile(selected);
+        const fileName = selected.split('\\').pop()?.split('/').pop() || 'Presentation';
+        parseAndLoadPresentation(text, fileName);
+        return;
+      }
+    } catch (e) {
+      console.log('Tauri open presentation fallback:', e);
+    }
+    fileInputRef.current?.click();
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        const text = evt.target?.result as string;
+        if (text) parseAndLoadPresentation(text, file.name);
+      };
+      reader.readAsText(file);
+    }
+  };
+
+  const handleSavePresentation = async () => {
+    try {
+      const filePath = await saveDialog({
+        filters: [{ name: 'DawnSlides Presentation', extensions: ['json'] }],
+      });
+      if (filePath) {
+        await writeTextFile(filePath, JSON.stringify(presentation, null, 2));
+      }
+    } catch (err) {
+      console.log('Tauri save presentation fallback, downloading JSON:', err);
+      const blob = new Blob([JSON.stringify(presentation, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${presentation.title}.json`;
+      a.click();
+    }
+  };
 
   const activeSlideIndex = presentation.slides.findIndex(s => s.id === presentation.activeSlideId);
   const activeSlide = presentation.slides[activeSlideIndex >= 0 ? activeSlideIndex : 0];
   const selectedElement = activeSlide.elements.find(e => e.id === selectedElementId) || null;
-
   const startPresentation = (fromBeginning: boolean) => {
     setPresentFromBeginning(fromBeginning);
     setIsPresenting(true);
   };
 
+  // AI Copilot Action & Text Insertion Event Handler for Presentations
+  useEffect(() => {
+    const handleInsertText = (e: Event) => {
+      const customEvent = e as CustomEvent<{ text: string }>;
+      const text = customEvent.detail?.text;
+      if (text) {
+        handleAddElement({
+          type: 'text',
+          content: text,
+          x: 360,
+          y: 320,
+          width: 1200,
+          height: 300,
+          fontSize: 28,
+          textColor: '#1e293b',
+        });
+      }
+    };
+
+    const handleExecuteActions = (e: Event) => {
+      const customEvent = e as CustomEvent<{ actions: any[] }>;
+      const actions = customEvent.detail?.actions;
+      if (!actions || !Array.isArray(actions)) return;
+
+      actions.forEach(action => {
+        try {
+          const type = (action.type || '').toLowerCase();
+          switch (type) {
+            case 'create_slide':
+            case 'add_slide':
+            case 'page_break':
+            case 'create_page': {
+              handleAddSlide('title-content');
+              if (action.title || action.text) {
+                const titleText = action.title || action.text;
+                setTimeout(() => {
+                  setPresentation(prev => {
+                    const lastSlide = prev.slides[prev.slides.length - 1];
+                    if (!lastSlide) return prev;
+                    const updatedElements = lastSlide.elements.map(el =>
+                      el.type === 'text' ? { ...el, content: titleText } : el
+                    );
+                    return {
+                      ...prev,
+                      slides: prev.slides.map(s => s.id === lastSlide.id ? { ...s, elements: updatedElements } : s),
+                    };
+                  });
+                }, 50);
+              }
+              break;
+            }
+            case 'heading':
+            case 'add_heading': {
+              handleAddElement({
+                type: 'text',
+                content: action.text || action.title || 'Tiêu đề AI',
+                x: 300,
+                y: 180,
+                width: 1300,
+                height: 120,
+                fontSize: 48,
+                bold: true,
+                textColor: '#1e293b',
+              });
+              break;
+            }
+            case 'insert':
+            case 'insert_text': {
+              handleAddElement({
+                type: 'text',
+                content: action.text || action.content || '',
+                x: 350,
+                y: 340,
+                width: 1200,
+                height: 250,
+                fontSize: 24,
+                textColor: '#334155',
+              });
+              break;
+            }
+            case 'set_background':
+            case 'bg_color': {
+              const bg = action.color || action.bg || '#f8fafc';
+              setPresentation(prev => {
+                const activeId = prev.activeSlideId;
+                return {
+                  ...prev,
+                  slides: prev.slides.map(s => s.id === activeId ? { ...s, backgroundFill: bg } : s),
+                };
+              });
+              break;
+            }
+          }
+        } catch (err) {
+          console.warn('Error executing AI action in DawnSlides:', action, err);
+        }
+      });
+    };
+
+    window.addEventListener('dawn-insert-copilot-text', handleInsertText);
+    window.addEventListener('dawn-execute-ai-action', handleExecuteActions);
+    return () => {
+      window.removeEventListener('dawn-insert-copilot-text', handleInsertText);
+      window.removeEventListener('dawn-execute-ai-action', handleExecuteActions);
+    };
+  }, [presentation.activeSlideId]);
+
   // Global PowerPoint Keybindings Engine
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      const isEditingText = document.activeElement && document.activeElement.getAttribute('contenteditable') === 'true';
+      const activeEl = document.activeElement;
+      const isEditingText = activeEl && (
+        activeEl.getAttribute('contenteditable') === 'true' ||
+        activeEl.tagName === 'INPUT' ||
+        activeEl.tagName === 'TEXTAREA'
+      );
 
       // F5: Start Presentation from Beginning (Slide 1)
       if (e.key === 'F5' && !e.shiftKey) {
@@ -143,7 +509,7 @@ export default function DawnSlides({ immersiveMode = false, onImmersiveModeChang
       // Ctrl + S: Save
       if (e.ctrlKey && e.key.toLowerCase() === 's') {
         e.preventDefault();
-        console.log('Saved Presentation');
+        handleSavePresentation();
         return;
       }
 
@@ -185,7 +551,7 @@ export default function DawnSlides({ immersiveMode = false, onImmersiveModeChang
     const newId = `slide-${Date.now()}`;
     const newSlide: Slide = {
       id: newId,
-      title: lang === 'vi' ? `Slide Mới ${presentation.slides.length + 1}` : `New Slide ${presentation.slides.length + 1}`,
+      title: isVi ? `Slide Mới ${presentation.slides.length + 1}` : `New Slide ${presentation.slides.length + 1}`,
       layout,
       backgroundFill: '#ffffff',
       transition: 'none',
@@ -195,7 +561,7 @@ export default function DawnSlides({ immersiveMode = false, onImmersiveModeChang
         {
           id: `title-${Date.now()}`,
           type: 'text',
-          content: lang === 'vi' ? 'Tiêu đề Slide Mới' : 'New Slide Title',
+          content: isVi ? 'Tiêu đề Slide Mới' : 'New Slide Title',
           x: 260,
           y: 200,
           width: 1400,
@@ -398,7 +764,6 @@ export default function DawnSlides({ immersiveMode = false, onImmersiveModeChang
   };
 
   const handleTriggerAIDesignIdeas = () => {
-    // Apply a modern gradient background and reorganize active slide elements
     const gradientBgs = [
       'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
       'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)',
@@ -408,7 +773,6 @@ export default function DawnSlides({ immersiveMode = false, onImmersiveModeChang
     const randomBg = gradientBgs[Math.floor(Math.random() * gradientBgs.length)];
     handleUpdateSlideBackground(randomBg);
 
-    // Apply dark mode text colors if background is dark gradient
     activeSlide.elements.forEach(el => {
       if (el.type === 'text' || el.type === 'wordart') {
         handleUpdateElement(el.id, { textColor: '#ffffff' });
@@ -420,8 +784,6 @@ export default function DawnSlides({ immersiveMode = false, onImmersiveModeChang
     window.print();
   };
 
-  const isVi = lang === 'vi';
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: 'var(--do-color-surface)' }}>
       {/* Top File Bar */}
@@ -431,10 +793,10 @@ export default function DawnSlides({ immersiveMode = false, onImmersiveModeChang
         </div>
 
         <div className="toolbar-group">
-          <button className="do-btn" style={{ borderRadius: '10px' }} title="New"><FilePlus size={14} /> {isVi ? 'Mới' : 'New'}</button>
-          <button className="do-btn" style={{ borderRadius: '10px' }} title="Open"><FolderOpen size={14} /> {isVi ? 'Mở' : 'Open'}</button>
-          <button className="do-btn" style={{ borderRadius: '10px' }} title="Save (Ctrl+S)"><Save size={14} /> {isVi ? 'Lưu' : 'Save'}</button>
-          <button className="do-btn" style={{ borderRadius: '10px' }} onClick={handleExportPDF} title="Export PDF (Ctrl+P)"><Download size={14} /> {isVi ? 'Xuất PDF' : 'Export'}</button>
+          <button className="do-btn" onClick={handleNewPresentation} style={{ borderRadius: '10px' }} title="New"><FilePlus size={14} /> {isVi ? 'Mới' : 'New'}</button>
+          <button className="do-btn" onClick={handleOpenPresentation} style={{ borderRadius: '10px' }} title="Open"><FolderOpen size={14} /> {isVi ? 'Mở' : 'Open'}</button>
+          <button className="do-btn" onClick={handleSavePresentation} style={{ borderRadius: '10px' }} title="Save (Ctrl+S)"><Save size={14} /> {isVi ? 'Lưu' : 'Save'}</button>
+          <button className="do-btn" onClick={handleExportPDF} style={{ borderRadius: '10px' }} title="Export PDF (Ctrl+P)"><Download size={14} /> {isVi ? 'Xuất PDF' : 'Export'}</button>
         </div>
 
         <div style={{ marginLeft: '1rem', color: 'var(--do-color-text-muted)', fontSize: '0.85rem' }}>
@@ -614,6 +976,14 @@ export default function DawnSlides({ immersiveMode = false, onImmersiveModeChang
         onClose={() => setIsChartModalOpen(false)}
         onInsert={handleInsertChart}
         lang={lang}
+      />
+
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileInputChange}
+        style={{ display: 'none' }}
+        accept=".json"
       />
     </div>
   );

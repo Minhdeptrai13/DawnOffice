@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import Sidebar, { ModuleType } from './components/Sidebar';
 import WelcomeHub from './pages/WelcomeHub';
 import DocumentWorkspace from './pages/DocumentWorkspace';
@@ -8,13 +9,62 @@ import DawnSettings from './pages/DawnSettings';
 import ModuleLaunchModal from './components/ModuleLaunchModal';
 import GoogleAuthModal, { UserProfile } from './components/GoogleAuthModal';
 import GoogleDriveDrawer from './components/GoogleDriveDrawer';
+import AICopilotDrawer from './components/AICopilotDrawer';
+import { DawnBrainLogo } from './components/CustomBrandIcons';
 
 function App() {
   const [activeModule, setActiveModule] = useState<ModuleType>('welcome');
   const [lang, setLang] = useState<'vi' | 'en'>('vi');
-  const [theme, setTheme] = useState<'standard' | 'eye-care' | 'dark' | 'system'>('standard');
+  const [theme, setTheme] = useState<'standard' | 'eye-care' | 'dark' | 'system'>(() => {
+    return (localStorage.getItem('dawn-theme') as any) || 'standard';
+  });
   const [immersiveMode, setImmersiveMode] = useState(() => localStorage.getItem('dawn-document-immersive') === 'true');
   const [sidebarVisible, setSidebarVisible] = useState(false);
+  const [isAICopilotOpen, setIsAICopilotOpen] = useState(false);
+
+  // Sync theme to root document attribute whenever theme changes
+  useEffect(() => {
+    localStorage.setItem('dawn-theme', theme);
+    if (theme === 'system') {
+      const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'standard');
+    } else {
+      document.documentElement.setAttribute('data-theme', theme);
+    }
+  }, [theme]);
+
+  // Auto-open file on launch if opened via Windows file association / double-click
+  useEffect(() => {
+    invoke<string | null>('get_cli_opened_file')
+      .then(openedFile => {
+        if (openedFile && openedFile.trim()) {
+          const cleanPath = openedFile.trim();
+          localStorage.setItem('dawn-last-opened-doc-path', cleanPath);
+          setActiveModule('document');
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('dawn-open-file-path', { detail: { filePath: cleanPath } }));
+          }, 200);
+        } else {
+          // If a last opened document path exists, open directly into document mode bypassing welcome screen
+          const lastOpened = localStorage.getItem('dawn-last-opened-doc-path');
+          if (lastOpened && lastOpened.trim()) {
+            setActiveModule('document');
+          }
+        }
+      })
+      .catch(err => console.warn('CLI file check error:', err));
+  }, []);
+
+  useEffect(() => {
+    const handleOpenCopilot = () => setIsAICopilotOpen(true);
+    const handleToggleCopilot = () => setIsAICopilotOpen(prev => !prev);
+    window.addEventListener('dawn-open-copilot', handleOpenCopilot);
+    window.addEventListener('dawn-toggle-copilot', handleToggleCopilot);
+    return () => {
+      window.removeEventListener('dawn-open-copilot', handleOpenCopilot);
+      window.removeEventListener('dawn-toggle-copilot', handleToggleCopilot);
+    };
+  }, []);
 
   // Module Launch Preview Modal State
   const [launchModalModule, setLaunchModalModule] = useState<ModuleType | null>(null);
@@ -52,11 +102,7 @@ function App() {
   }, []);
 
   const handleSelectSidebarModule = (module: ModuleType) => {
-    if (module === 'welcome' || module === 'settings') {
-      setActiveModule(module);
-    } else {
-      setLaunchModalModule(module);
-    }
+    setActiveModule(module);
   };
 
   const handleLoginGoogleSuccess = (profile: UserProfile) => {
@@ -92,9 +138,33 @@ function App() {
         onMouseLeave={hideSidebar}
       />
 
-      <main className="main-content" style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <main
+        className="main-content"
+        style={{
+          flex: 1,
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          height: '100%',
+          marginRight: isAICopilotOpen ? '420px' : '0px',
+          transition: 'margin-right 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        }}
+      >
         {activeModule === 'welcome' && (
-          <WelcomeHub onSelectModule={module => setLaunchModalModule(module)} lang={lang} />
+          <WelcomeHub
+            onSelectModule={module => setActiveModule(module)}
+            onOpenDirectFile={(filePath, module) => {
+              setActiveModule(module);
+              if (filePath && filePath.trim()) {
+                const cleanPath = filePath.trim();
+                localStorage.setItem('dawn-last-opened-doc-path', cleanPath);
+                setTimeout(() => {
+                  window.dispatchEvent(new CustomEvent('dawn-open-file-path', { detail: { filePath: cleanPath } }));
+                }, 150);
+              }
+            }}
+            lang={lang}
+          />
         )}
         {activeModule === 'document' && (
           <DocumentWorkspace immersiveMode={immersiveMode} onImmersiveModeChange={setImmersivePreference} />
@@ -115,6 +185,50 @@ function App() {
         )}
       </main>
 
+      {/* Floating AI Copilot Trigger Button */}
+      <button
+        onClick={() => setIsAICopilotOpen(prev => !prev)}
+        style={{
+          position: 'fixed',
+          bottom: '24px',
+          right: isAICopilotOpen ? '436px' : '24px',
+          zIndex: 99990,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          padding: '10px 20px',
+          borderRadius: '30px',
+          background: 'linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)',
+          color: '#ffffff',
+          border: 'none',
+          boxShadow: '0 6px 22px rgba(37, 99, 235, 0.4)',
+          cursor: 'pointer',
+          fontWeight: 700,
+          fontSize: '0.9rem',
+          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          backdropFilter: 'blur(8px)',
+        }}
+        title={lang === 'vi' ? 'Mở DawnChat AI Assistant' : 'Open DawnChat AI Assistant'}
+      >
+        <DawnBrainLogo size={22} />
+        <span>
+          {isAICopilotOpen
+            ? (lang === 'vi' ? 'Đóng DawnChat' : 'Close DawnChat')
+            : 'DawnChat AI'}
+        </span>
+      </button>
+
+      {/* g4f AI Copilot Drawer */}
+      <AICopilotDrawer
+        isOpen={isAICopilotOpen}
+        onClose={() => setIsAICopilotOpen(false)}
+        userProfile={userProfile}
+        onLogoutGoogle={handleLogoutGoogle}
+        activeModule={activeModule}
+        lang={lang}
+        theme={theme}
+      />
+
       {/* Header Top-Right Control Group - Google Pro Account Badge (Only on Home Screen) */}
       {activeModule === 'welcome' && (
         <div
@@ -132,37 +246,20 @@ function App() {
             <div
               onClick={() => setIsGoogleDriveOpen(true)}
               style={{
-                padding: '4px 10px 4px 6px',
+                padding: '4px 12px 4px 6px',
                 borderRadius: '20px',
-                background: 'linear-gradient(135deg, rgba(255,215,0,0.12) 0%, rgba(139,92,246,0.12) 100%)',
-                border: '2px solid transparent',
-                backgroundImage: 'linear-gradient(var(--do-color-surface), var(--do-color-surface)), linear-gradient(135deg, #ffd700, #a855f7, #06b6d4)',
-                backgroundOrigin: 'border-box',
-                backgroundClip: 'padding-box, border-box',
-                boxShadow: '0 4px 14px rgba(255,215,0,0.3)',
+                backgroundColor: 'var(--do-color-surface)',
+                border: '1px solid var(--do-color-border)',
+                boxShadow: 'var(--do-shadow-sm)',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '6px',
+                gap: '8px',
                 cursor: 'pointer',
                 backdropFilter: 'blur(8px)',
               }}
             >
-              <img src={userProfile.avatar} alt="Avatar" style={{ width: '24px', height: '24px', borderRadius: '50%', boxShadow: '0 0 8px rgba(255,215,0,0.6)' }} />
-              <span style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--do-color-text)' }}>{userProfile.name}</span>
-              <span
-                style={{
-                  fontSize: '9px',
-                  fontWeight: 900,
-                  background: 'linear-gradient(135deg, #ffd700 0%, #f59e0b 100%)',
-                  color: '#000000',
-                  padding: '1px 6px',
-                  borderRadius: '8px',
-                  boxShadow: '0 2px 6px rgba(245,158,11,0.4)',
-                  letterSpacing: '0.5px',
-                }}
-              >
-                👑 PRO
-              </span>
+              <img src={userProfile.avatar} alt="Avatar" style={{ width: '22px', height: '22px', borderRadius: '50%' }} />
+              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--do-color-text)' }}>{userProfile.name}</span>
             </div>
           ) : (
             <button
@@ -180,7 +277,7 @@ function App() {
                 backdropFilter: 'blur(8px)',
               }}
             >
-              🔑 {lang === 'vi' ? 'Đăng nhập Google' : 'Google Login'}
+              {lang === 'vi' ? 'Đăng nhập Google' : 'Google Login'}
             </button>
           )}
         </div>
@@ -195,8 +292,18 @@ function App() {
           if (launchModalModule) setActiveModule(launchModalModule);
           setLaunchModalModule(null);
         }}
-        onOpenFile={() => {
-          if (launchModalModule) setActiveModule(launchModalModule);
+        onOpenFile={(filePath?: string) => {
+          if (launchModalModule) {
+            const targetMod = launchModalModule;
+            setActiveModule(targetMod);
+            if (filePath && filePath.trim()) {
+              const cleanPath = filePath.trim();
+              localStorage.setItem('dawn-last-opened-doc-path', cleanPath);
+              setTimeout(() => {
+                window.dispatchEvent(new CustomEvent('dawn-open-file-path', { detail: { filePath: cleanPath } }));
+              }, 150);
+            }
+          }
           setLaunchModalModule(null);
         }}
         lang={lang}

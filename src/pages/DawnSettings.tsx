@@ -161,22 +161,19 @@ export default function DawnSettings({
             style={{
               padding: '4px 10px 4px 6px',
               borderRadius: '20px',
-              background: 'linear-gradient(135deg, rgba(255,215,0,0.12) 0%, rgba(139,92,246,0.12) 100%)',
-              border: '1px solid rgba(255,215,0,0.4)',
+              backgroundColor: 'var(--do-color-surface)',
+              border: '1px solid var(--do-color-border)',
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
             }}
           >
             <img src={userProfile.avatar} alt="Avatar" style={{ width: '22px', height: '22px', borderRadius: '50%' }} />
-            <span style={{ fontSize: '0.78rem', fontWeight: 800 }}>{userProfile.name}</span>
-            <span style={{ fontSize: '9px', fontWeight: 900, backgroundColor: '#ffd700', color: '#000', padding: '1px 6px', borderRadius: '8px' }}>
-              👑 PRO
-            </span>
+            <span style={{ fontSize: '0.78rem', fontWeight: 700 }}>{userProfile.name}</span>
           </div>
         ) : (
           <span style={{ fontSize: '0.78rem', color: 'var(--do-color-text-muted)', fontWeight: 600 }}>
-            DawnOffice v2.5.0 Pro Build
+            DawnOffice v2.5.0
           </span>
         )}
       </div>
@@ -749,70 +746,65 @@ export default function DawnSettings({
             </div>
           )}
 
-          {/* 4. PRO VIP ACCOUNT TAB */}
+          {/* 4. PRO ACCOUNT TAB */}
           {activeTab === 'account' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               <div
                 style={{
-                  padding: '1.75rem',
-                  borderRadius: '24px',
-                  background: 'linear-gradient(135deg, rgba(255,215,0,0.12) 0%, rgba(139,92,246,0.12) 100%)',
-                  border: '2px solid transparent',
-                  backgroundImage: 'linear-gradient(var(--do-color-surface), var(--do-color-surface)), linear-gradient(135deg, #ffd700, #a855f7, #06b6d4)',
-                  backgroundOrigin: 'border-box',
-                  backgroundClip: 'padding-box, border-box',
-                  boxShadow: '0 8px 24px rgba(255,215,0,0.2)',
+                  padding: '2rem',
+                  borderRadius: '20px',
+                  backgroundColor: 'var(--do-color-bg)',
+                  border: '1px solid var(--do-color-border)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <div
+                <div>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--do-color-primary)', textTransform: 'uppercase', marginBottom: '6px' }}>
+                    GOOGLE ACCOUNT
+                  </div>
+                  <h3 style={{ margin: '0 0 6px 0', fontSize: '1.3rem', fontWeight: 800, color: 'var(--do-color-text)' }}>
+                    Tài khoản Google
+                  </h3>
+                  <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--do-color-text-muted)', lineHeight: 1.4 }}>
+                    {userProfile ? `Đã xác thực tài khoản Google (${userProfile.email})` : 'Xác thực tài khoản Google để đồng bộ dữ liệu.'}
+                  </p>
+                </div>
+
+                {!userProfile && (
+                  <button
+                    onClick={() => {
+                      const event = new CustomEvent('open-google-auth');
+                      window.dispatchEvent(event);
+                    }}
                     style={{
-                      width: '64px',
-                      height: '64px',
-                      borderRadius: '50%',
-                      background: 'linear-gradient(135deg, #ffd700 0%, #f59e0b 100%)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      boxShadow: '0 6px 18px rgba(245,158,11,0.4)',
+                      padding: '12px 22px',
+                      borderRadius: '12px',
+                      backgroundColor: 'var(--do-color-primary)',
+                      color: '#ffffff',
+                      border: 'none',
+                      fontWeight: 700,
+                      fontSize: '0.88rem',
+                      cursor: 'pointer',
+                      transition: 'opacity 0.15s ease',
                     }}
                   >
-                    <Crown size={34} color="#000000" />
-                  </div>
-
-                  <div>
-                    <h3 style={{ margin: '0 0 4px 0', fontSize: '1.2rem', fontWeight: 900, color: 'var(--do-color-text)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      DawnOffice Pro VIP Membership
-                      <span style={{ fontSize: '10px', backgroundColor: '#ffd700', color: '#000', padding: '2px 8px', borderRadius: '10px', fontWeight: 900 }}>
-                        👑 VIP ACTIVE
-                      </span>
-                    </h3>
-                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--do-color-text-muted)' }}>
-                      {userProfile ? `Kích hoạt bởi tài khoản Google Pro (${userProfile.email})` : 'Miễn phí kích hoạt cho toàn bộ người dùng DawnOffice v2.5.0!'}
-                    </p>
-                  </div>
-                </div>
+                    Đăng nhập bằng Google
+                  </button>
+                )}
               </div>
 
               {/* Features List */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div style={{ padding: '1.2rem', borderRadius: '16px', backgroundColor: 'var(--do-color-bg)', border: '1px solid var(--do-color-border)', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <ShieldCheck size={24} color="#10b981" />
-                  <div>
-                    <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>Bảo Mật Mã Hóa OAuth 2.0</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--do-color-text-muted)' }}>Bảo vệ 100% tài liệu cá nhân</div>
-                  </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+                <div style={{ padding: '1.4rem', borderRadius: '18px', backgroundColor: 'var(--do-color-bg)', border: '1px solid var(--do-color-border)' }}>
+                  <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--do-color-text)', marginBottom: '4px' }}>Tài khoản Pro VIP</div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--do-color-text-muted)' }}>Quyền truy cập đầy đủ tính năng hệ thống</div>
                 </div>
 
-                <div style={{ padding: '1.2rem', borderRadius: '16px', backgroundColor: 'var(--do-color-bg)', border: '1px solid var(--do-color-border)', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <Sparkles size={24} color="#ffd700" />
-                  <div>
-                    <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>Giao Diện Hoàng Gia Gold</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--do-color-text-muted)' }}>Mở khóa hiệu ứng ánh kim</div>
-                  </div>
+                <div style={{ padding: '1.4rem', borderRadius: '18px', backgroundColor: 'var(--do-color-bg)', border: '1px solid var(--do-color-border)' }}>
+                  <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--do-color-text)', marginBottom: '4px' }}>Bảo mật OAuth 2.0</div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--do-color-text-muted)' }}>Mã hóa xác thực trực tiếp từ Google</div>
                 </div>
               </div>
             </div>

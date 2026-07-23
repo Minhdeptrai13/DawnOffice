@@ -8,7 +8,7 @@ import {
   Scissors, Copy, ClipboardPaste, Search, Replace,
   Undo2, Redo2, Link as LinkIcon, Sigma, SeparatorHorizontal,
   FileCheck, MessageSquare, ListTree, Sliders, Maximize2,
-  Square, Circle, ArrowRight, Heading, Globe
+  Square, Circle, ArrowRight, Heading, Globe, Sparkles
 } from 'lucide-react';
 import FontPicker from './FontPicker';
 import StyleGallery from './StyleGallery';

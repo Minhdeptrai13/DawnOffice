@@ -66,10 +66,13 @@ interface DawnDocumentProps {
   immersiveMode: boolean; 
   onImmersiveModeChange: (enabled: boolean) => void;
   onFileInfoChange?: (filePath: string | null, title: string) => void;
+  tabId?: string;
+  initialFilePath?: string | null;
 }
 
-export default function DawnDocument({ immersiveMode, onImmersiveModeChange, onFileInfoChange }: DawnDocumentProps) {
-  const [currentFilePath, setCurrentFilePath] = useState<string | null>(null);
+export default function DawnDocument({ immersiveMode, onImmersiveModeChange, onFileInfoChange, tabId, initialFilePath }: DawnDocumentProps) {
+  const [currentFilePath, setCurrentFilePath] = useState<string | null>(initialFilePath || null);
+  const draftKey = `dawn_doc_draft_${tabId || 'default'}`;
   const [saveStatus, setSaveStatus] = useState<'Saved' | 'Saving...' | 'Unsaved'>('Saved');
   const [showSearch, setShowSearch] = useState(false);
   const [showReplace, setShowReplace] = useState(false);
@@ -83,6 +86,14 @@ export default function DawnDocument({ immersiveMode, onImmersiveModeChange, onF
   const hideTimer = useRef<number | null>(null);
   const toolbarInside = useRef(false);
   const [toolbarVisible, setToolbarVisible] = useState(!immersiveMode);
+
+  // Sync tab title whenever currentFilePath changes
+  useEffect(() => {
+    const fileName = currentFilePath
+      ? (currentFilePath.split('\\').pop()?.split('/').pop() || 'Untitled Document')
+      : 'Untitled Document';
+    onFileInfoChange?.(currentFilePath, fileName);
+  }, [currentFilePath, onFileInfoChange]);
 
   // Language setting (vi / en)
   const [lang, setLang] = useState<'vi' | 'en'>('vi');
@@ -134,6 +145,7 @@ export default function DawnDocument({ immersiveMode, onImmersiveModeChange, onF
     open: () => {},
     new: () => {},
     print: () => {},
+    autoSave: () => {},
   });
 
   const editor = useEditor({
@@ -168,11 +180,17 @@ export default function DawnDocument({ immersiveMode, onImmersiveModeChange, onF
         emptyEditorClass: 'is-editor-empty',
       }),
     ],
-    content: '', // empty by default, placeholder fades away on typing
-    onUpdate: () => {
+    content: '',
+    onUpdate: ({ editor }) => {
       setSaveStatus('Unsaved');
+      try {
+        const html = editor.getHTML();
+        localStorage.setItem(draftKey, html);
+      } catch (e) {
+        console.error('Failed to save draft HTML:', e);
+      }
       if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
-      timeoutRef.current = window.setTimeout(() => handleAutoSave(), 30000);
+      timeoutRef.current = window.setTimeout(() => actionsRef.current.autoSave(), 3000);
       recalcToc();
     },
   });
@@ -196,17 +214,170 @@ export default function DawnDocument({ immersiveMode, onImmersiveModeChange, onF
     if (editor) recalcToc();
   }, [editor, recalcToc]);
 
-  // Listen for AI Copilot text insertion events
+  // Helper to format raw text with newlines into clean HTML paragraphs
+  const cleanHTMLContent = (raw: string) => {
+    if (!raw) return '';
+    let str = raw
+      .replace(/\\n/g, '\n')
+      .replace(/```[a-z]*\n?/g, '')
+      .replace(/```/g, '')
+      .trim();
+    
+    // Convert markdown bold **text** to <strong>text</strong>
+    str = str.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    
+    const lines = str.split('\n');
+    const formatted = lines
+      .map(l => l.trim() ? `<p>${l.trim()}</p>` : '')
+      .filter(Boolean)
+      .join('');
+    
+    return formatted || `<p>${str}</p>`;
+  };
+
+  const pendingFilePathRef = useRef<string | null>(null);
+
+  const loadFilePathIntoEditor = useCallback(async (filePath: string) => {
+    if (!editor || !filePath) return;
+    try {
+      let content = '';
+      if (filePath.endsWith('.docx')) {
+        const uint8Array = await readFile(filePath);
+        content = await convertDocxToHtml(uint8Array.buffer);
+      } else if (filePath.endsWith('.md')) {
+        const text = await readTextFile(filePath);
+        content = await marked.parse(text);
+      } else if (filePath.endsWith('.txt')) {
+        const text = await readTextFile(filePath);
+        content = text.split('\n').map(line => `<p>${line}</p>`).join('');
+      } else {
+        content = await readTextFile(filePath);
+      }
+      editor.commands.setContent(content);
+      setCurrentFilePath(filePath);
+      setSaveStatus('Saved');
+      addRecentFile(filePath);
+      localStorage.setItem('dawn-last-opened-doc-path', filePath);
+      try {
+        localStorage.setItem(draftKey, content);
+      } catch (e) {}
+      pendingFilePathRef.current = null;
+    } catch (err) {
+      console.error('Error opening file path into editor:', filePath, err);
+    }
+  }, [editor, addRecentFile, draftKey]);
+
+  // Initial restoration of draft or file path
+  const isLoadedRef = useRef(false);
   useEffect(() => {
+    if (editor && !isLoadedRef.current) {
+      isLoadedRef.current = true;
+      const savedDraft = localStorage.getItem(draftKey);
+      const targetPath = pendingFilePathRef.current || initialFilePath;
+
+      if (savedDraft && savedDraft.trim() && savedDraft !== '<p></p>') {
+        editor.commands.setContent(savedDraft);
+        if (targetPath) {
+          setCurrentFilePath(targetPath);
+          const fileName = targetPath.split('\\').pop()?.split('/').pop() || 'Untitled Document';
+          onFileInfoChange?.(targetPath, fileName);
+        }
+      } else if (targetPath && targetPath.trim()) {
+        loadFilePathIntoEditor(targetPath.trim());
+      }
+    }
+  }, [editor, draftKey, initialFilePath, loadFilePathIntoEditor, onFileInfoChange]);
+
+  useEffect(() => {
+    if (!editor) return;
+
     const handleInsertText = (e: Event) => {
       const customEvent = e as CustomEvent<{ text: string }>;
-      if (editor && customEvent.detail?.text) {
-        editor.chain().focus().insertContent(customEvent.detail.text).run();
+      if (customEvent.detail?.text) {
+        editor.chain().focus().insertContent(cleanHTMLContent(customEvent.detail.text)).run();
       }
     };
+
+    const handleExecuteActions = (e: Event) => {
+      const customEvent = e as CustomEvent<{ actions: any[] }>;
+      const actions = customEvent.detail?.actions || [];
+      actions.forEach(action => {
+        try {
+          switch (action.type) {
+            case 'insert':
+            case 'insert_text':
+              if (action.text) editor.chain().focus().insertContent(cleanHTMLContent(action.text)).run();
+              break;
+            case 'font':
+            case 'set_font':
+              if (action.name || action.font) {
+                // @ts-ignore
+                if (editor.commands.setFontFamily) editor.commands.setFontFamily(action.name || action.font);
+              }
+              break;
+            case 'size':
+            case 'set_font_size':
+              if (action.size) {
+                // @ts-ignore
+                if (editor.commands.setFontSize) editor.commands.setFontSize(action.size);
+              }
+              break;
+            case 'heading':
+            case 'add_heading':
+              if (action.text) {
+                const level = action.level ? Number(action.level) : 1;
+                // @ts-ignore
+                editor.chain().focus().toggleHeading({ level }).insertContent(cleanHTMLContent(action.text)).run();
+              }
+              break;
+            case 'page_break':
+            case 'create_page':
+              // @ts-ignore
+              if (editor.commands.setPageBreak) editor.commands.setPageBreak();
+              break;
+            case 'create_table':
+            case 'table':
+              if (action.html || action.content) {
+                const rawTableHtml = action.html || action.content;
+                const cleanTable = rawTableHtml.replace(/\\n/g, '').replace(/```html/gi, '').replace(/```/g, '');
+                editor.chain().focus().insertContent(cleanTable).run();
+              } else {
+                const rows = action.rows ? Number(action.rows) : 3;
+                const cols = action.cols ? Number(action.cols) : 3;
+                editor.chain().focus().insertTable({ rows, cols, withHeaderRow: true }).run();
+              }
+              break;
+            case 'clear':
+              editor.chain().focus().setContent('').run();
+              break;
+          }
+        } catch (err) {
+          console.warn('Error executing Dawn AI action:', action, err);
+        }
+      });
+    };
+
+    const handleOpenFileEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<{ filePath: string }>;
+      const filePath = customEvent.detail?.filePath;
+      if (filePath) {
+        pendingFilePathRef.current = filePath;
+        localStorage.setItem('dawn-last-opened-doc-path', filePath);
+        if (editor) {
+          loadFilePathIntoEditor(filePath);
+        }
+      }
+    };
+
     window.addEventListener('dawn-insert-copilot-text', handleInsertText);
-    return () => window.removeEventListener('dawn-insert-copilot-text', handleInsertText);
-  }, [editor]);
+    window.addEventListener('dawn-execute-ai-action', handleExecuteActions);
+    window.addEventListener('dawn-open-file-path', handleOpenFileEvent);
+    return () => {
+      window.removeEventListener('dawn-insert-copilot-text', handleInsertText);
+      window.removeEventListener('dawn-execute-ai-action', handleExecuteActions);
+      window.removeEventListener('dawn-open-file-path', handleOpenFileEvent);
+    };
+  }, [editor, loadFilePathIntoEditor]);
 
   // File operations
   const handleAutoSave = useCallback(async () => {
@@ -233,8 +404,11 @@ export default function DawnDocument({ immersiveMode, onImmersiveModeChange, onF
     }
   }, [currentFilePath, editor]);
 
+  useEffect(() => {
+    actionsRef.current.autoSave = handleAutoSave;
+  }, [handleAutoSave]);
+
   const handleSave = useCallback(async () => {
-    if (!editor) return;
     if (currentFilePath) {
       await handleAutoSave();
     } else {
@@ -341,8 +515,9 @@ export default function DawnDocument({ immersiveMode, onImmersiveModeChange, onF
       open: handleOpen,
       new: handleNew,
       print: handlePrintToPDF,
+      autoSave: handleAutoSave,
     };
-  }, [handleSave, handleSaveAs, handleOpen, handleNew, handlePrintToPDF]);
+  }, [handleSave, handleSaveAs, handleOpen, handleNew, handlePrintToPDF, handleAutoSave]);
 
   // Global Keyboard Shortcuts
   useEffect(() => {

@@ -57,31 +57,31 @@ export default function DawnLogoAnimated({
       >
         <defs>
           <linearGradient id="dlSunGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%"   stopColor="#fb923c" />
-            <stop offset="50%"  stopColor="#f43f5e" />
-            <stop offset="100%" stopColor="#be123c" />
+            <stop offset="0%" stopColor="#ff7a45" />
+            <stop offset="50%" stopColor="#f43f5e" />
+            <stop offset="100%" stopColor="#e11d48" />
           </linearGradient>
           <clipPath id="dlHorizonClip">
-            <rect x="0" y="0" width="100" height="72" />
+            <rect x="0" y="0" width="100" height="74" />
           </clipPath>
         </defs>
 
         {/* Sun + Buildings clipped above horizon */}
         <g clipPath="url(#dlHorizonClip)">
           <circle
-            cx="50" cy="65" r="28"
+            cx="50" cy="68" r="29"
             fill="url(#dlSunGrad)"
             className="dl-anim-sun"
           />
-          <rect x="22" y="45" width="14" height="27" rx="2" fill="#334155" className="dl-anim-building dl-building-1" />
-          <rect x="42" y="28" width="16" height="44" rx="2" fill="#0f172a" className="dl-anim-building dl-building-2" />
-          <rect x="64" y="52" width="14" height="20" rx="2" fill="#475569" className="dl-anim-building dl-building-3" />
+          <rect x="25" y="44" width="13" height="30" rx="2" fill="#334155" className="dl-anim-building dl-building-1" />
+          <rect x="43" y="26" width="14" height="48" rx="2" fill="#0f172a" className="dl-anim-building dl-building-2" />
+          <rect x="62" y="50" width="13" height="24" rx="2" fill="#475569" className="dl-anim-building dl-building-3" />
         </g>
 
         {/* Horizon line */}
         <line
-          x1="8" y1="72" x2="92" y2="72"
-          stroke="#0f172a" strokeWidth="4" strokeLinecap="round"
+          x1="12" y1="74" x2="88" y2="74"
+          stroke="#0f172a" strokeWidth="4.5" strokeLinecap="round"
           className="dl-anim-horizon"
         />
       </svg>

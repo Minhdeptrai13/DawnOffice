@@ -1,6 +1,8 @@
+import { useRef } from 'react';
 import { ModuleType } from './Sidebar';
-import { X, FilePlus, FolderOpen, FileText, Table, Presentation, Sparkles, ArrowRight } from 'lucide-react';
+import { X, FilePlus, Sparkles, ArrowRight } from 'lucide-react';
 import { open as openFileDialog } from '@tauri-apps/plugin-dialog';
+import { DawnWordLogo, DawnExcelLogo, DawnPowerPointLogo, DawnFolderLogo } from './CustomBrandIcons';
 
 interface ModuleLaunchModalProps {
   isOpen: boolean;
@@ -19,11 +21,13 @@ export default function ModuleLaunchModal({
   onOpenFile,
   lang = 'vi',
 }: ModuleLaunchModalProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   if (!isOpen || !module || module === 'welcome' || module === 'settings') return null;
 
   const isVi = lang === 'vi';
 
-  // Handle Real Native Windows Explorer File Picker
+  // Handle Real Native Windows Explorer File Picker & Fallback HTML File Input
   const handleRealNativeFilePicker = async () => {
     try {
       let extensions: string[] = [];
@@ -48,14 +52,29 @@ export default function ModuleLaunchModal({
 
       if (selected && typeof selected === 'string') {
         onOpenFile(selected);
-      } else {
-        onOpenFile();
+        onClose();
+        return;
       }
     } catch (err) {
-      console.log('Native file dialog fallback:', err);
-      onOpenFile();
+      console.log('Native file dialog fallback, using file input:', err);
     }
-    onClose();
+
+    // Fallback HTML File Picker if native dialog fails or returns empty
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    } else {
+      onOpenFile();
+      onClose();
+    }
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const path = (file as any).path || file.name;
+      onOpenFile(path);
+      onClose();
+    }
   };
 
   const getModuleInfo = () => {
@@ -64,7 +83,7 @@ export default function ModuleLaunchModal({
         return {
           title: 'DawnDocument',
           subtitle: isVi ? 'Trình Soạn Thảo Văn Bản Cao Cấp' : 'Advanced Word Processor',
-          icon: <FileText size={32} color="#2563eb" />,
+          icon: <DawnWordLogo size={42} />,
           bgColor: 'rgba(37, 99, 235, 0.1)',
           borderColor: '#2563eb',
           desc: isVi ? 'Soạn thảo văn bản Word, tài liệu hợp đồng, báo cáo chuẩn định dạng DOCX' : 'Create Word documents, contracts, and DOCX reports',
@@ -74,7 +93,7 @@ export default function ModuleLaunchModal({
         return {
           title: 'DawnSheets',
           subtitle: isVi ? 'Trình Bảng Tính Dữ Liệu Thông Minh' : 'Smart Data Spreadsheet',
-          icon: <Table size={32} color="#10b981" />,
+          icon: <DawnExcelLogo size={42} />,
           bgColor: 'rgba(16, 185, 129, 0.1)',
           borderColor: '#10b981',
           desc: isVi ? 'Bảng tính Excel với 50+ công thức, Pivot Table, AutoFilter & Sparklines' : 'Excel spreadsheet with 50+ formulas, Pivot Table & AutoFilter',
@@ -84,7 +103,7 @@ export default function ModuleLaunchModal({
         return {
           title: 'DawnSlides',
           subtitle: isVi ? 'Trình Thuyết Trình Slide Chuyên Nghiệp' : 'Professional Slide Presenter',
-          icon: <Presentation size={32} color="#f59e0b" />,
+          icon: <DawnPowerPointLogo size={42} />,
           bgColor: 'rgba(245, 158, 11, 0.1)',
           borderColor: '#f59e0b',
           desc: isVi ? 'Trình chiếu PowerPoint với SmartArt, Smart Alignment Guides & AI Ideas' : 'PowerPoint presentation with SmartArt & AI Design Ideas',
@@ -226,8 +245,8 @@ export default function ModuleLaunchModal({
               onMouseEnter={e => (e.currentTarget.style.borderColor = info.borderColor)}
               onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--do-color-border)')}
             >
-              <div style={{ width: '38px', height: '38px', borderRadius: '10px', backgroundColor: 'var(--do-color-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--do-color-border)' }}>
-                <FolderOpen size={20} color="var(--do-color-text)" />
+              <div style={{ marginBottom: '4px' }}>
+                <DawnFolderLogo size={32} />
               </div>
               <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--do-color-text)' }}>
                 {isVi ? 'Mở Thư Mục Windows' : 'Open Windows Folder'}
@@ -242,6 +261,17 @@ export default function ModuleLaunchModal({
             </div>
           </div>
         </div>
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileInputChange}
+          style={{ display: 'none' }}
+          accept={
+            module === 'document' ? '.docx,.doc,.txt,.md,.html' :
+            module === 'spreadsheet' ? '.xlsx,.xls,.csv' :
+            module === 'presentation' ? '.pptx,.ppt' : '*'
+          }
+        />
       </div>
     </div>
   );

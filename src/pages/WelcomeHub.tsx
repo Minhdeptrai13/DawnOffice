@@ -1,13 +1,14 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import DawnLogoAnimated from '../components/DawnLogoAnimated';
 import { ModuleType } from '../components/Sidebar';
-import {
-  FileText, Table, Presentation, Search, Sparkles,
-  ArrowRight, Clock, Layout
-} from 'lucide-react';
+import { Search, Sparkles, ArrowRight, Clock, Layout } from 'lucide-react';
+import { open as openFileDialog } from '@tauri-apps/plugin-dialog';
+import { useRecentFiles } from '../hooks/useRecentFiles';
+import { DawnWordLogo, DawnExcelLogo, DawnPowerPointLogo, DawnFolderLogo } from '../components/CustomBrandIcons';
 
 interface WelcomeHubProps {
   onSelectModule: (module: ModuleType) => void;
+  onOpenDirectFile?: (filePath: string, module: ModuleType) => void;
   lang?: 'vi' | 'en';
 }
 
@@ -21,9 +22,55 @@ interface TemplateItem {
   badge?: string;
 }
 
-export default function WelcomeHub({ onSelectModule, lang = 'vi' }: WelcomeHubProps) {
+export default function WelcomeHub({ onSelectModule, onOpenDirectFile, lang = 'vi' }: WelcomeHubProps) {
   const isVi = lang === 'vi';
   const [searchQuery, setSearchQuery] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { recentFiles } = useRecentFiles();
+
+  const getModuleFromExt = (filePath: string): ModuleType => {
+    const ext = filePath.split('.').pop()?.toLowerCase() || '';
+    if (['xlsx', 'xls', 'csv'].includes(ext)) return 'spreadsheet';
+    if (['pptx', 'ppt'].includes(ext)) return 'presentation';
+    return 'document';
+  };
+
+  const handleOpenFolderExplorer = async () => {
+    try {
+      const selected = await openFileDialog({
+        multiple: false,
+        filters: [{ name: 'Supported Files', extensions: ['docx', 'doc', 'txt', 'md', 'xlsx', 'xls', 'csv', 'pptx', 'ppt'] }],
+      });
+      if (selected && typeof selected === 'string') {
+        const mod = getModuleFromExt(selected);
+        if (onOpenDirectFile) {
+          onOpenDirectFile(selected, mod);
+        } else {
+          onSelectModule(mod);
+        }
+        return;
+      }
+    } catch (err) {
+      console.log('Tauri open file dialog fallback:', err);
+    }
+
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const path = (file as any).path || file.name;
+      const mod = getModuleFromExt(path);
+      if (onOpenDirectFile) {
+        onOpenDirectFile(path, mod);
+      } else {
+        onSelectModule(mod);
+      }
+    }
+  };
 
   const templates: TemplateItem[] = [
     {
@@ -63,12 +110,6 @@ export default function WelcomeHub({ onSelectModule, lang = 'vi' }: WelcomeHubPr
     },
   ];
 
-  const recentFiles = [
-    { id: 'rf-1', name: isVi ? 'Báo cáo doanh thu tháng 7.xlsx' : 'July Sales Report.xlsx', module: 'spreadsheet' as ModuleType, time: isVi ? '10 phút trước' : '10 mins ago', size: '1.2 MB' },
-    { id: 'rf-2', name: isVi ? 'Slide ra mắt sản phẩm v2.pptx' : 'Product Launch Slide.pptx', module: 'presentation' as ModuleType, time: isVi ? '2 giờ trước' : '2 hours ago', size: '4.5 MB' },
-    { id: 'rf-3', name: isVi ? 'Hợp đồng kinh tế DawnOffice.docx' : 'DawnOffice Contract.docx', module: 'document' as ModuleType, time: isVi ? 'Hôm qua' : 'Yesterday', size: '640 KB' },
-  ];
-
   const filteredTemplates = templates.filter(t =>
     t.title.toLowerCase().includes(searchQuery.toLowerCase()) || t.desc.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -105,37 +146,64 @@ export default function WelcomeHub({ onSelectModule, lang = 'vi' }: WelcomeHubPr
             borderRadius: '50%',
             background: 'radial-gradient(circle, rgba(59, 130, 246, 0.25) 0%, rgba(255, 255, 255, 0) 70%)',
             pointerEvents: 'none',
-            filter: 'blur(40px)',
           }}
         />
 
-        <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
+        <div style={{ maxWidth: '1100px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
           {/* Header Title & Logo */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', marginBottom: '1rem' }}>
-            <DawnLogoAnimated size={54} showWordmark={false} replayOnHover />
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <h1 style={{ margin: 0, fontSize: '2.2rem', fontWeight: 800, color: 'var(--do-color-text)', letterSpacing: '-0.5px' }}>
-                  DawnOffice
-                </h1>
-                <span
-                  style={{
-                    backgroundColor: 'var(--do-color-primary)',
-                    color: '#ffffff',
-                    fontSize: '11px',
-                    fontWeight: 700,
-                    padding: '2px 8px',
-                    borderRadius: '12px',
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  v2.5 PRO
-                </span>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <DawnLogoAnimated size={54} replayOnHover />
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <h1 style={{ margin: 0, fontSize: '1.85rem', fontWeight: 800, color: 'var(--do-color-text)', letterSpacing: '-0.5px' }}>
+                    DawnOffice Hub
+                  </h1>
+                  <span
+                    style={{
+                      backgroundColor: 'rgba(37, 99, 235, 0.12)',
+                      color: 'var(--do-color-primary)',
+                      border: '1px solid rgba(37, 99, 235, 0.3)',
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      padding: '2px 8px',
+                      borderRadius: '12px',
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    v2.5 PRO
+                  </span>
+                </div>
+                <p style={{ margin: '4px 0 0 0', fontSize: '1rem', color: 'var(--do-color-text-muted)', fontWeight: 500 }}>
+                  {isVi ? 'Siêu ứng dụng Văn phòng Thế hệ Mới' : 'Next-Generation Office Suite'}
+                </p>
               </div>
-              <p style={{ margin: '4px 0 0 0', fontSize: '1rem', color: 'var(--do-color-text-muted)', fontWeight: 500 }}>
-                {isVi ? 'Siêu ứng dụng Văn phòng Thế hệ Mới — Nhanh mượt, Thông minh & Đột phá' : 'Next-Generation Office Suite — Ultra Fast, Intelligent & Powerful'}
-              </p>
             </div>
+
+            {/* Direct Open Windows Folder / File Button */}
+            <button
+              onClick={handleOpenFolderExplorer}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                padding: '10px 18px',
+                borderRadius: '12px',
+                backgroundColor: 'var(--do-color-surface)',
+                color: 'var(--do-color-text)',
+                border: '1px solid var(--do-color-border)',
+                fontWeight: 700,
+                fontSize: '0.9rem',
+                cursor: 'pointer',
+                boxShadow: 'var(--do-shadow-md)',
+                transition: 'all 0.2s ease',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--do-color-primary)')}
+              onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--do-color-border)')}
+            >
+              <DawnFolderLogo size={24} />
+              <span>{isVi ? 'Mở Tệp / Thư Mục Windows' : 'Open File / Windows Folder'}</span>
+            </button>
           </div>
 
           {/* Search Bar */}
@@ -201,8 +269,8 @@ export default function WelcomeHub({ onSelectModule, lang = 'vi' }: WelcomeHubPr
             >
               <div style={{ position: 'absolute', top: 0, right: 0, width: '90px', height: '90px', background: 'radial-gradient(circle, rgba(37,99,235,0.12) 0%, transparent 70%)' }} />
               <div>
-                <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(37,99,235,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>
-                  <FileText size={24} color="#2563eb" />
+                <div style={{ marginBottom: '1rem' }}>
+                  <DawnWordLogo size={48} />
                 </div>
                 <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700, color: 'var(--do-color-text)' }}>
                   DawnDocument
@@ -240,8 +308,8 @@ export default function WelcomeHub({ onSelectModule, lang = 'vi' }: WelcomeHubPr
             >
               <div style={{ position: 'absolute', top: 0, right: 0, width: '90px', height: '90px', background: 'radial-gradient(circle, rgba(16,185,129,0.12) 0%, transparent 70%)' }} />
               <div>
-                <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(16,185,129,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>
-                  <Table size={24} color="#10b981" />
+                <div style={{ marginBottom: '1rem' }}>
+                  <DawnExcelLogo size={48} />
                 </div>
                 <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700, color: 'var(--do-color-text)' }}>
                   DawnSheets
@@ -279,14 +347,14 @@ export default function WelcomeHub({ onSelectModule, lang = 'vi' }: WelcomeHubPr
             >
               <div style={{ position: 'absolute', top: 0, right: 0, width: '90px', height: '90px', background: 'radial-gradient(circle, rgba(245,158,11,0.12) 0%, transparent 70%)' }} />
               <div>
-                <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(245,158,11,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>
-                  <Presentation size={24} color="#f59e0b" />
+                <div style={{ marginBottom: '1rem' }}>
+                  <DawnPowerPointLogo size={48} />
                 </div>
                 <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700, color: 'var(--do-color-text)' }}>
                   DawnSlides
                 </h3>
                 <p style={{ margin: '6px 0 0 0', fontSize: '0.85rem', color: 'var(--do-color-text-muted)', lineHeight: 1.4 }}>
-                  {isVi ? 'Trình chiếu PowerPoint với SmartArt, Smart Guides & AI Ideas' : 'PowerPoint presentation with SmartArt & Smart Guides'}
+                  {isVi ? 'Trình chiếu PowerPoint với SmartArt, Smart Alignment Guides & AI Ideas' : 'PowerPoint presentation with SmartArt & Smart Guides'}
                 </p>
               </div>
 
@@ -349,54 +417,106 @@ export default function WelcomeHub({ onSelectModule, lang = 'vi' }: WelcomeHubPr
           </div>
         </div>
 
-        {/* 3. Recent Files List (Tệp gần đây) */}
+        {/* 3. Recent Files List (Tệp gần đây thực tế) */}
         <div>
-          <h2 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--do-color-text)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Clock size={18} color="var(--do-color-text-muted)" />
-            {isVi ? 'Tệp Gần Đây' : 'Recent Files'}
-          </h2>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+            <h2 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--do-color-text)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Clock size={18} color="var(--do-color-text-muted)" />
+              {isVi ? 'Tệp Gần Đây' : 'Recent Files'}
+            </h2>
+            <button
+              onClick={handleOpenFolderExplorer}
+              style={{ background: 'none', border: 'none', color: 'var(--do-color-primary)', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+              <DawnFolderLogo size={18} />
+              <span>{isVi ? 'Mở tệp khác...' : 'Open other file...'}</span>
+            </button>
+          </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            {recentFiles.map(file => (
+            {recentFiles.length === 0 ? (
               <div
-                key={file.id}
-                onClick={() => onSelectModule(file.module)}
                 style={{
                   backgroundColor: 'var(--do-color-surface)',
-                  borderRadius: '10px',
-                  padding: '0.75rem 1rem',
-                  border: '1px solid var(--do-color-border)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  cursor: 'pointer',
-                  transition: 'background 0.15s ease',
+                  borderRadius: '12px',
+                  padding: '2rem',
+                  border: '1px dashed var(--do-color-border)',
+                  textAlign: 'center',
+                  color: 'var(--do-color-text-muted)',
+                  fontSize: '0.9rem',
                 }}
-                onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--do-color-surface-hover)')}
-                onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'var(--do-color-surface)')}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  {file.module === 'document' && <FileText size={18} color="#2563eb" />}
-                  {file.module === 'spreadsheet' && <Table size={18} color="#10b981" />}
-                  {file.module === 'presentation' && <Presentation size={18} color="#f59e0b" />}
-                  <div>
-                    <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--do-color-text)' }}>
-                      {file.name}
-                    </div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--do-color-text-muted)' }}>
-                      {file.time} • {file.size}
-                    </div>
-                  </div>
-                </div>
-
-                <button className="do-btn" style={{ borderRadius: '6px', fontSize: '0.8rem' }}>
-                  {isVi ? 'Mở' : 'Open'}
+                <p style={{ margin: '0 0 12px 0' }}>
+                  {isVi ? 'Chưa có tệp nào mở gần đây. Hãy chọn một tệp từ máy tính để làm việc!' : 'No recent files found. Open a file to start working!'}
+                </p>
+                <button
+                  className="do-btn"
+                  onClick={handleOpenFolderExplorer}
+                  style={{ borderRadius: '8px', padding: '6px 14px', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <DawnFolderLogo size={20} />
+                  <span>{isVi ? 'Mở Thư Mục / Chọn Tệp' : 'Browse Files'}</span>
                 </button>
               </div>
-            ))}
+            ) : (
+              recentFiles.map(file => {
+                const mod = getModuleFromExt(file.path);
+                return (
+                  <div
+                    key={file.path}
+                    onClick={() => {
+                      if (onOpenDirectFile) {
+                        onOpenDirectFile(file.path, mod);
+                      } else {
+                        onSelectModule(mod);
+                      }
+                    }}
+                    style={{
+                      backgroundColor: 'var(--do-color-surface)',
+                      borderRadius: '10px',
+                      padding: '0.75rem 1rem',
+                      border: '1px solid var(--do-color-border)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      cursor: 'pointer',
+                      transition: 'background 0.15s ease',
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--do-color-surface-hover)')}
+                    onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'var(--do-color-surface)')}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', overflow: 'hidden' }}>
+                      {mod === 'document' && <DawnWordLogo size={24} />}
+                      {mod === 'spreadsheet' && <DawnExcelLogo size={24} />}
+                      {mod === 'presentation' && <DawnPowerPointLogo size={24} />}
+                      <div style={{ overflow: 'hidden' }}>
+                        <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--do-color-text)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                          {file.name}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--do-color-text-muted)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                          {file.path}
+                        </div>
+                      </div>
+                    </div>
+
+                    <button className="do-btn" style={{ borderRadius: '6px', fontSize: '0.8rem', marginLeft: '12px' }}>
+                      {isVi ? 'Mở' : 'Open'}
+                    </button>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
       </div>
+
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileInputChange}
+        style={{ display: 'none' }}
+        accept=".docx,.doc,.txt,.md,.xlsx,.xls,.csv,.pptx,.ppt,.html"
+      />
     </div>
   );
 }

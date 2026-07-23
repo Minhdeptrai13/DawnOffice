@@ -39,24 +39,93 @@
   --t-spring: 200ms cubic-bezier(0.34, 1.56, 0.64, 1); /* slight spring */
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --do-color-primary:       #3b82f6;
-    --do-color-primary-hover: #60a5fa;
-    --do-color-primary-light: #1e3a5f;
-    --do-color-surface:       #1e2433;
-    --do-color-surface-hover: #2a3347;
-    --do-color-surface-active:#2d4070;
-    --do-color-bg:            #151b27;
-    --do-color-border:        #2d3748;
-    --do-color-border-focus:  #3b82f6;
-    --do-color-text:          #f1f5f9;
-    --do-color-text-muted:    #94a3b8;
-  }
+/* ── Theme Attribute Selectors (DawnSettings Dynamic Switching) ───────────────── */
+[data-theme="standard"],
+html[data-theme="standard"] {
+  --do-color-primary:       #2563eb;
+  --do-color-primary-hover: #1d4ed8;
+  --do-color-primary-light: #eff6ff;
+  --do-color-surface:       #ffffff;
+  --do-color-surface-hover: #f0f4ff;
+  --do-color-surface-active:#dbeafe;
+  --do-color-bg:            #f8fafc;
+  --do-color-border:        #e2e8f0;
+  --do-color-border-focus:  #93c5fd;
+  --do-color-text:          #0f172a;
+  --do-color-text-muted:    #64748b;
 }
 
-/* ── Base ─────────────────────────────────────────────────── */
+[data-theme="eye-care"],
+html[data-theme="eye-care"] {
+  --do-color-primary:       #d97706;
+  --do-color-primary-hover: #b45309;
+  --do-color-primary-light: #fef3c7;
+  --do-color-surface:       #f5e5c9;
+  --do-color-surface-hover: #edd6b1;
+  --do-color-surface-active:#e2c595;
+  --do-color-bg:            #fbf0d9;
+  --do-color-border:        #d6c19f;
+  --do-color-border-focus:  #d97706;
+  --do-color-text:          #433422;
+  --do-color-text-muted:    #7a6449;
+}
+
+[data-theme="dark"],
+html[data-theme="dark"] {
+  --do-color-primary:       #3b82f6;
+  --do-color-primary-hover: #60a5fa;
+  --do-color-primary-light: #1e3a5f;
+  --do-color-surface:       #18181b;
+  --do-color-surface-hover: #27272a;
+  --do-color-surface-active:#3f3f46;
+  --do-color-bg:            #09090b;
+  --do-color-border:        #27272a;
+  --do-color-border-focus:  #3b82f6;
+  --do-color-text:          #f4f4f5;
+  --do-color-text-muted:    #a1a1aa;
+}
+
+[data-theme="system"],
+html[data-theme="system"] {
+  --do-color-primary:       #6366f1;
+  --do-color-primary-hover: #818cf8;
+  --do-color-primary-light: rgba(99, 102, 241, 0.15);
+  --do-color-surface:       rgba(255, 255, 255, 0.12);
+  --do-color-surface-hover: rgba(255, 255, 255, 0.2);
+  --do-color-surface-active:rgba(255, 255, 255, 0.28);
+  --do-color-bg:            transparent;
+  --do-color-border:        rgba(255, 255, 255, 0.15);
+  --do-color-border-focus:  #6366f1;
+  --do-color-text:          var(--system-text-color, #f4f4f5);
+  --do-color-text-muted:    var(--system-text-muted, #a1a1aa);
+}
+
+/* ── Base & Focus Ring System ─────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
+
+:focus {
+  outline: none;
+}
+
+:focus-visible:not(.do-chat-input) {
+  outline: 2px solid var(--do-color-primary) !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25) !important;
+}
+
+button:focus:not(:focus-visible),
+input:focus:not(:focus-visible),
+label:focus:not(:focus-visible),
+input.do-chat-input,
+input.do-chat-input:focus,
+input.do-chat-input:focus-visible {
+  outline: none !important;
+  outline-width: 0 !important;
+  outline-style: none !important;
+  outline-color: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+}
 
 body {
   margin: 0;
@@ -80,6 +149,95 @@ body {
   0%   { transform: scale(0); opacity: 0.35; }
   80%  { transform: scale(2.5); opacity: 0.1; }
   100% { transform: scale(3); opacity: 0; }
+}
+
+/* ── Accessible GUI Native Controls & Switches ────────────── */
+/* ── NSVisualEffectView Vibrancy Material System ───────────── */
+.visual-effect-material,
+.do-sidebar,
+.do-ribbon-bar,
+.do-drawer {
+  background-color: rgba(255, 255, 255, 0.78) !important;
+  -webkit-backdrop-filter: blur(25px) saturate(190%) !important;
+  backdrop-filter: blur(25px) saturate(190%) !important;
+}
+
+[data-theme="dark"] .visual-effect-material,
+[data-theme="dark"] .do-sidebar,
+[data-theme="dark"] .do-ribbon-bar,
+[data-theme="dark"] .do-drawer {
+  background-color: rgba(18, 24, 38, 0.78) !important;
+  -webkit-backdrop-filter: blur(25px) saturate(190%) !important;
+  backdrop-filter: blur(25px) saturate(190%) !important;
+}
+
+input[type="checkbox"][role="switch"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 32px;
+  height: 18px;
+  border-radius: 10px;
+  background-color: var(--do-color-border);
+  position: relative;
+  outline: none;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  vertical-align: middle;
+}
+
+input[type="checkbox"][role="switch"]::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background-color: #ffffff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  transition: transform 0.2s ease;
+}
+
+input[type="checkbox"][role="switch"]:checked {
+  background-color: var(--do-color-primary);
+}
+
+input[type="checkbox"][role="switch"]:checked::before {
+  transform: translateX(14px);
+}
+
+/* ── TipTap Table Formatting ────────────────────────────── */
+.ProseMirror table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+  margin: 12px 0;
+  border: 1px solid #cbd5e1;
+}
+
+.ProseMirror td,
+.ProseMirror th {
+  min-width: 1em;
+  border: 1px solid #cbd5e1;
+  padding: 8px 12px;
+  vertical-align: top;
+  box-sizing: border-box;
+  position: relative;
+  font-weight: normal;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--do-color-text);
+}
+
+.ProseMirror th {
+  font-weight: 700;
+  text-align: left;
+  background-color: rgba(37,99,235,0.06);
+}
+
+.ProseMirror p {
+  margin: 2px 0;
+  line-height: 1.5;
 }
 
 /* ── do-btn (toolbar text buttons: New, Open, Save…) ─────── */
