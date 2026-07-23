@@ -1,9 +1,18 @@
 import * as mammoth from 'mammoth';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
 
-// Convert ArrayBuffer (from Tauri fs) to HTML string for TipTap
+// Convert ArrayBuffer (from Tauri fs) to HTML string for TipTap with full image support
 export async function convertDocxToHtml(arrayBuffer: ArrayBuffer): Promise<string> {
-  const result = await mammoth.convertToHtml({ arrayBuffer });
+  const options = {
+    convertImage: mammoth.images.imgElement((element) => {
+      return element.read("base64").then((imageBuffer) => {
+        return {
+          src: `data:${element.contentType};base64,${imageBuffer}`
+        };
+      });
+    })
+  };
+  const result = await mammoth.convertToHtml({ arrayBuffer }, options);
   return result.value;
 }
 

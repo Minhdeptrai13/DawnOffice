@@ -736,10 +736,10 @@ export default function DawnDocument({ immersiveMode, onImmersiveModeChange, onF
       .ProseMirror table td, .ProseMirror table th { border: 1px solid ${borderColor}; }
       .dawn-page-line {
         position: absolute;
-        left: -2rem;
-        right: -2rem;
-        height: 24px;
-        background: var(--do-color-bg);
+        left: 0;
+        right: 0;
+        height: 1px;
+        border-bottom: 1px dashed var(--do-color-border);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -749,6 +749,8 @@ export default function DawnDocument({ immersiveMode, onImmersiveModeChange, onF
       .dawn-page-line-label {
         font-size: 10px;
         color: var(--do-color-text-muted);
+        background-color: ${paperBg};
+        padding: 0 10px;
         user-select: none;
       }
       .format-painter-cursor * { cursor: crosshair !important; }

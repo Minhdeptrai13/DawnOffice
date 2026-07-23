@@ -83,6 +83,38 @@ export default function DocumentWorkspace({ immersiveMode, onImmersiveModeChange
     setTabs(prev => prev.map(t => t.id === id ? { ...t, filePath, title } : t));
   }, []);
 
+  // Handle external file opening event (via CLI / double-click or Open Dialog)
+  useEffect(() => {
+    const handleOpenFile = (e: Event) => {
+      const customEvent = e as CustomEvent<{ filePath: string }>;
+      const filePath = customEvent.detail?.filePath;
+      if (!filePath) return;
+
+      const fileName = filePath.split('\\').pop()?.split('/').pop() || 'Opened Document';
+
+      setTabs(prev => {
+        // If file already opened in a tab, just activate it
+        const existing = prev.find(t => t.filePath === filePath);
+        if (existing) {
+          setActiveTabId(existing.id);
+          return prev;
+        }
+        // If current active tab is empty & unused, reuse it
+        const currentTab = prev.find(t => t.id === activeTabId);
+        if (currentTab && (!currentTab.filePath || currentTab.title === 'Untitled Document')) {
+          return prev.map(t => t.id === activeTabId ? { ...t, filePath, title: fileName } : t);
+        }
+        // Otherwise, open a new tab for this file
+        const newTab = { id: 'tab-' + generateId(), filePath, title: fileName };
+        setActiveTabId(newTab.id);
+        return [...prev, newTab];
+      });
+    };
+
+    window.addEventListener('dawn-open-file-path', handleOpenFile);
+    return () => window.removeEventListener('dawn-open-file-path', handleOpenFile);
+  }, [activeTabId]);
+
   // Keyboard shortcut for New Tab (Ctrl+T) and Close Tab (Ctrl+W)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
