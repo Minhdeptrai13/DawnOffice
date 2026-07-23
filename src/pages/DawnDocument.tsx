@@ -926,12 +926,27 @@ export default function DawnDocument({ immersiveMode, onImmersiveModeChange, onF
     return () => { document.title = 'DawnOffice'; };
   }, [currentFilePath, fileName]);
 
+  // Dynamic page count estimation based on editor content height
+  const [totalPages, setTotalPages] = useState(1);
+  useEffect(() => {
+    const calculatePages = () => {
+      const el = editorContainerRef.current?.querySelector('.ProseMirror') as HTMLElement | null;
+      if (el) {
+        const pages = Math.max(1, Math.ceil(el.scrollHeight / PAGE_HEIGHT_PX));
+        setTotalPages(pages);
+      }
+    };
+    calculatePages();
+    const timer = setInterval(calculatePages, 1000);
+    return () => clearInterval(timer);
+  }, [PAGE_HEIGHT_PX]);
+
   const wordStats = {
     words: editor?.storage.characterCount.words() || 0,
     characters: editor?.storage.characterCount.characters() || 0,
     charactersNoSpaces: (editor?.getText() || '').replace(/\s+/g, '').length,
     paragraphs: (editor?.getHTML() || '').split('</p>').length - 1 || 1,
-    pages: pageLines.length + 1,
+    pages: totalPages,
     readingTimeMinutes: Math.ceil((editor?.storage.characterCount.words() || 0) / 200),
   };
 
@@ -1118,7 +1133,7 @@ export default function DawnDocument({ immersiveMode, onImmersiveModeChange, onF
         style={{ height: '28px', backgroundColor: 'var(--do-color-surface)', borderTop: '1px solid var(--do-color-border)', display: 'flex', alignItems: 'center', padding: '0 1rem', fontSize: '0.78rem', color: 'var(--do-color-text-muted)', justifyContent: 'space-between', userSelect: 'none' }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', cursor: 'pointer' }} onClick={() => setShowWordCountModal(true)}>
-          <span>{isVi ? `Trang ${pageLines.length + 1}` : `Page ${pageLines.length + 1}`}</span>
+          <span>{isVi ? `Trang ${totalPages}` : `Page ${totalPages}`}</span>
           <span style={{ color: 'var(--do-color-border)' }}>|</span>
           <span>{wordStats.words} {isVi ? 'từ' : 'words'}</span>
           <span>{wordStats.characters} {isVi ? 'ký tự' : 'characters'}</span>
